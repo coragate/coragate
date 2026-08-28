@@ -5,7 +5,7 @@ import (
 	"github.com/coragate/coragate/kernel"
 )
 
-// 本机宿主：默认 127.0.0.1:8080，跟调用方同机。与集群宿主共用同一内核。
+// Client host: default 127.0.0.1:8080, colocated with the caller. Same kernel as the cluster host.
 func main() {
 	run.Main(kernel.HostClient)
 }

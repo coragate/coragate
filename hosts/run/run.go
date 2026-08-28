@@ -12,7 +12,7 @@ import (
 	"github.com/coragate/coragate/plugins/storage/file"
 )
 
-// Main 组装内置插件并启动数据面。内核本身不 import 具体插件包。
+// Main wires built-in plugins and starts the dataplane. The kernel does not import concrete plugin packages.
 func Main(host kernel.HostKind) {
 	if kernel.WantVersion(os.Args[1:]) {
 		kernel.WriteVersion(os.Stdout)

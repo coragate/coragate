@@ -12,26 +12,26 @@ import (
 	"time"
 )
 
-// RulesSchemaVersion 是规则快照 JSON 的当前 schema。不识别版本的 blob 一律拒绝加载。
+// RulesSchemaVersion is the current rule-snapshot JSON schema. Unversioned blobs are rejected.
 const RulesSchemaVersion = 1
 
-// SnapshotRule 是快照里的一条规则描述。plugin 由宿主 Compiler 映射到具体插件，内核不做匹配。
+// SnapshotRule describes one rule in a snapshot. The host Compiler maps plugin to an Inspector; the kernel does not match.
 type SnapshotRule struct {
 	ID      string `json:"id"`
 	Plugin  string `json:"plugin,omitempty"`
 	Pattern string `json:"pattern"`
 }
 
-// RuleSnapshot 是可落盘的规则配置（AC-8 / AC-13）。文件只是载体，不是 SQLite 表。
+// RuleSnapshot is persistable rule config (AC-8 / AC-13). The file is a carrier, not a SQLite table.
 type RuleSnapshot struct {
 	SchemaVersion int            `json:"schema_version"`
 	Rules         []SnapshotRule `json:"rules"`
 }
 
-// Compiler 把快照编成 Inspector。宿主注入（例如关键字插件），避免内核 import 具体插件包。
+// Compiler turns a snapshot into Inspectors. The host injects it (e.g. keyword plugin) so the kernel does not import plugin packages.
 type Compiler func(RuleSnapshot) ([]Inspector, error)
 
-// Ruleset 是进程内可原子替换的规则集。热路径每次请求读当前快照，不在 chunk 循环里换插件。
+// Ruleset is an atomically replaceable in-process rule set. The hot path reads the current snapshot per request, not inside the chunk loop.
 type Ruleset struct {
 	mu          sync.RWMutex
 	compile     Compiler
@@ -40,12 +40,12 @@ type Ruleset struct {
 	fingerprint string
 }
 
-// NewRuleset 创建空规则集；首次 Load / LoadFile 之后才有 Inspector。
+// NewRuleset creates an empty set. Inspectors exist only after the first Load / LoadFile.
 func NewRuleset(compile Compiler) *Ruleset {
 	return &Ruleset{compile: compile}
 }
 
-// Inspectors 返回当前插件切片副本，供单次请求使用。
+// Inspectors returns a copy of the current plugin slice for one request.
 func (s *Ruleset) Inspectors() []Inspector {
 	if s == nil {
 		return nil
@@ -57,7 +57,7 @@ func (s *Ruleset) Inspectors() []Inspector {
 	return out
 }
 
-// Snapshot 返回当前已加载快照的副本。
+// Snapshot returns a copy of the currently loaded snapshot.
 func (s *Ruleset) Snapshot() RuleSnapshot {
 	if s == nil {
 		return RuleSnapshot{}
@@ -67,12 +67,12 @@ func (s *Ruleset) Snapshot() RuleSnapshot {
 	return cloneSnapshot(s.snap)
 }
 
-// Load 编译并替换规则。失败时保留旧规则。
+// Load compiles and replaces rules. On failure the previous rules stay.
 func (s *Ruleset) Load(snap RuleSnapshot) error {
 	return s.apply(snap, "")
 }
 
-// LoadFile 从 JSON 文件加载。失败时保留旧规则。
+// LoadFile loads from a JSON file. On failure the previous rules stay.
 func (s *Ruleset) LoadFile(path string) error {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -85,7 +85,7 @@ func (s *Ruleset) LoadFile(path string) error {
 	return s.apply(snap, fileFingerprint(b))
 }
 
-// ReloadIfChanged 文件内容与上次成功加载不同才编译。文件不存在时返回该错误。
+// ReloadIfChanged compiles only when file bytes differ from the last successful load. Missing file returns that error.
 func (s *Ruleset) ReloadIfChanged(path string) (bool, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -132,7 +132,7 @@ func (s *Ruleset) apply(snap RuleSnapshot, fingerprint string) error {
 	return nil
 }
 
-// ParseSnapshot 解析规则快照 JSON。
+// ParseSnapshot parses a rule-snapshot JSON.
 func ParseSnapshot(b []byte) (RuleSnapshot, error) {
 	var snap RuleSnapshot
 	if err := json.Unmarshal(b, &snap); err != nil {
@@ -154,7 +154,7 @@ func validateSnapshot(snap RuleSnapshot) error {
 	return nil
 }
 
-// SeedSnapshot 在规则文件尚不存在时，用环境变量种子生成第一份快照。
+// SeedSnapshot builds the first snapshot from env seeds when the rules file does not exist yet.
 func SeedSnapshot(id, pattern string) RuleSnapshot {
 	return RuleSnapshot{
 		SchemaVersion: RulesSchemaVersion,
@@ -166,7 +166,7 @@ func SeedSnapshot(id, pattern string) RuleSnapshot {
 	}
 }
 
-// WriteSnapshotFile 把快照写成 JSON 文件，供运维或控制面编辑。
+// WriteSnapshotFile writes a snapshot as JSON for ops or the control plane.
 func WriteSnapshotFile(path string, snap RuleSnapshot) error {
 	if snap.SchemaVersion == 0 {
 		snap.SchemaVersion = RulesSchemaVersion
@@ -190,7 +190,7 @@ func WriteSnapshotFile(path string, snap RuleSnapshot) error {
 	return os.WriteFile(path, append(b, '\n'), 0o644)
 }
 
-// WatchRulesFile 短轮询规则文件；编译失败保留旧规则。interval<=0 则立即返回。
+// WatchRulesFile polls the rules file. Compile failure keeps the old rules. interval<=0 returns immediately.
 func WatchRulesFile(ctx context.Context, rs *Ruleset, path string, interval time.Duration, logf func(string, ...any)) {
 	if rs == nil || interval <= 0 || path == "" {
 		return

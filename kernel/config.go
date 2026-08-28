@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-// HostKind 区分两套宿主的默认监听，不改变内核行为。
+// HostKind selects the default listen address for a host. It does not change kernel behavior.
 type HostKind int
 
 const (
@@ -15,13 +15,13 @@ const (
 	HostClient
 )
 
-// 两套宿主的默认监听。内核本身不假设集群 DNS；可用 CORAGATE_LISTEN 覆盖。
+// Default listen addresses for the two hosts. The kernel does not assume cluster DNS; override with CORAGATE_LISTEN.
 const (
 	DefaultListenClient  = "127.0.0.1:8080"
 	DefaultListenCluster = "0.0.0.0:8080"
 )
 
-// Config 为数据面运行配置。
+// Config is the dataplane runtime configuration.
 type Config struct {
 	Listen          string
 	UpstreamBaseURL string
@@ -34,7 +34,7 @@ type Config struct {
 	Auditor         *Auditor
 }
 
-// inspectors 单次请求读取当前插件。Rules 存在时以快照为准，便于 reload 后新请求立刻换规则。
+// inspectors returns plugins for one request. When Rules is set, the snapshot wins so reload takes effect on the next request.
 func (c Config) inspectors() []Inspector {
 	if c.Rules != nil {
 		return c.Rules.Inspectors()
@@ -46,11 +46,11 @@ func (c Config) client() *http.Client {
 	if c.HTTPClient != nil {
 		return c.HTTPClient
 	}
-	// 流式响应不能设整体 Timeout，否则会在读完 body 前被掐断。
+	// Streaming responses must not set a client Timeout; it would cut the body mid-read.
 	return &http.Client{Timeout: 0}
 }
 
-// LoadConfig 从环境变量读取；宿主只决定 Listen 默认值。
+// LoadConfig reads environment variables. The host only supplies the default Listen.
 func LoadConfig(host HostKind) Config {
 	listen := os.Getenv("CORAGATE_LISTEN")
 	if listen == "" {
@@ -90,10 +90,10 @@ func (c Config) failClosed() bool {
 	return parseFailMode(c.FailMode) == FailClosed
 }
 
-// ConfigSchemaVersion 是运行配置快照的当前 schema。无版本字段视为不透明 blob，拒绝解析。
+// ConfigSchemaVersion is the current runtime-config snapshot schema. Missing version is an opaque blob and is rejected.
 const ConfigSchemaVersion = 1
 
-// ConfigSnapshot 是可识别版本的配置形状（AC-13）。不是某张 SQL 表；密钥不进快照。
+// ConfigSnapshot is a versioned config shape (AC-13). Not a SQL table; secrets are omitted.
 type ConfigSnapshot struct {
 	SchemaVersion int    `json:"schema_version"`
 	Listen        string `json:"listen,omitempty"`
@@ -102,7 +102,7 @@ type ConfigSnapshot struct {
 	RulesPath     string `json:"rules_path,omitempty"`
 }
 
-// Snapshot 导出当前非机密配置，供健康检查与升级识别。
+// Snapshot exports non-secret config for health checks and upgrade detection.
 func (c Config) Snapshot() ConfigSnapshot {
 	return ConfigSnapshot{
 		SchemaVersion: ConfigSchemaVersion,
@@ -113,7 +113,7 @@ func (c Config) Snapshot() ConfigSnapshot {
 	}
 }
 
-// ParseConfigSnapshot 解析配置 JSON；缺少或未知 schema_version 一律拒绝。
+// ParseConfigSnapshot parses config JSON. Missing or unknown schema_version is rejected.
 func ParseConfigSnapshot(b []byte) (ConfigSnapshot, error) {
 	var snap ConfigSnapshot
 	if err := json.Unmarshal(b, &snap); err != nil {

@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-// Auditor 内存队列 + 后台 flush。Enqueue 不得等待适配器落盘。
+// Auditor is an in-memory queue with a background flush. Enqueue must not wait on the adapter.
 type Auditor struct {
 	store Store
 	ch    chan Envelope
@@ -14,7 +14,7 @@ type Auditor struct {
 	once  sync.Once
 }
 
-// NewAuditor 启动后台 worker。store 为 nil 时 Enqueue 为空操作。
+// NewAuditor starts the background worker. If store is nil, Enqueue is a no-op.
 func NewAuditor(store Store, buf int) *Auditor {
 	if store == nil {
 		return nil
@@ -40,7 +40,7 @@ func (a *Auditor) loop() {
 	}
 }
 
-// Enqueue 非阻塞交给队列；队列满则丢弃（进程崩溃同样会丢未 flush 缓冲）。
+// Enqueue is non-blocking. A full queue drops the event (unflushed buffers are also lost on crash).
 func (a *Auditor) Enqueue(env Envelope) {
 	if a == nil {
 		return
@@ -51,7 +51,7 @@ func (a *Auditor) Enqueue(env Envelope) {
 	}
 }
 
-// Close 等队列排空后停止 worker。
+// Close drains the queue then stops the worker.
 func (a *Auditor) Close() {
 	if a == nil {
 		return
@@ -60,7 +60,7 @@ func (a *Auditor) Close() {
 	<-a.done
 }
 
-// List 只读查询已 flush 的 envelope。控制面看板走本接口，不直接 SELECT 存储实现。
+// List returns flushed envelopes. The control-plane board uses this; it does not SELECT the storage impl.
 func (a *Auditor) List(ctx context.Context, limit int) ([]Envelope, error) {
 	if a == nil || a.store == nil {
 		return nil, nil

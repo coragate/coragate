@@ -2,13 +2,13 @@ package kernel
 
 import "context"
 
-// EnvelopeSchemaVersion 审计事件规范版本。换存储适配器仍按此 JSON 读。
+// EnvelopeSchemaVersion is the audit-event schema. Storage adapters still read this JSON.
 const EnvelopeSchemaVersion = 1
 
-// RuleNone 表示未命中任何规则（AC-7）。
+// RuleNone means no rule matched (AC-7). The string value is unchanged.
 const RuleNone = "未命中"
 
-// Envelope 是审计事件的规范形状，不是某张 SQL 表（ADR-0012）。
+// Envelope is the canonical audit event, not a SQL table (ADR-0012).
 type Envelope struct {
 	SchemaVersion int    `json:"schema_version"`
 	Time          string `json:"time"`
@@ -20,7 +20,7 @@ type Envelope struct {
 	EngineError   string `json:"engine_error,omitempty"`
 }
 
-// Store 存储适配器。内核只认本接口，默认实现可以是文件或 SQLite。
+// Store is the storage adapter. The kernel only knows this interface; the default impl may be a file or SQLite.
 type Store interface {
 	Append(ctx context.Context, env Envelope) error
 	List(ctx context.Context, limit int) ([]Envelope, error)

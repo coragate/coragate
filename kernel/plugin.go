@@ -5,13 +5,13 @@ import (
 	"fmt"
 )
 
-// PolicyEnforce 命中则阻断且不打上游。PolicyObserve 仍检测并审计，但不因规则命中而阻断。
+// PolicyEnforce blocks on a hit and skips upstream. PolicyObserve still detects and audits, but a hit does not block.
 const (
 	PolicyEnforce = "enforce"
 	PolicyObserve = "observe"
 )
 
-// 检测引擎不可用时的行为（AC-9 / ADR-0007）。默认 fail_open。
+// Behavior when the detection engine is unavailable (AC-9 / ADR-0007). Default is fail_open.
 const (
 	FailOpen   = "fail_open"
 	FailClosed = "fail_closed"
@@ -24,22 +24,22 @@ const (
 	OutcomeFailClosed = "fail_closed"
 )
 
-// InspectResult 是插件对一段文本的判定。匹配逻辑只在插件内。
-// EngineError 非空表示检测引擎不可用，不是规则命中。
+// InspectResult is a plugin verdict on a text span. Matching logic stays inside the plugin.
+// A non-empty EngineError means the engine is down, not a rule hit.
 type InspectResult struct {
 	Hit         bool
 	RuleID      string
 	EngineError string
 }
 
-// Inspector 为数据面检测插件接口（AC-10）。第一期同进程注册，不走 plugin.Open。
+// Inspector is the dataplane detection plugin interface (AC-10). Phase 1 registers in-process; no plugin.Open.
 type Inspector interface {
 	Name() string
 	InspectInput(ctx context.Context, text string) InspectResult
 	InspectOutputWindow(ctx context.Context, window string) InspectResult
 }
 
-// InspectInput 按注册顺序调用插件，返回第一次命中或第一次引擎故障。
+// InspectInput calls plugins in order and returns the first hit or the first engine failure.
 func InspectInput(ctx context.Context, inspectors []Inspector, text string) InspectResult {
 	for _, p := range inspectors {
 		if p == nil {
@@ -53,7 +53,7 @@ func InspectInput(ctx context.Context, inspectors []Inspector, text string) Insp
 	return InspectResult{}
 }
 
-// InspectOutputWindow 对滑动窗口调用插件（输出边读边扫）。
+// InspectOutputWindow calls plugins on the sliding window (scan-while-streaming).
 func InspectOutputWindow(ctx context.Context, inspectors []Inspector, window string) InspectResult {
 	for _, p := range inspectors {
 		if p == nil {

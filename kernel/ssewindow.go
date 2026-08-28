@@ -8,7 +8,7 @@ import (
 
 const defaultWindowBytes = 4096
 
-// sseWindow 只缓冲完整 SSE 行里抽出的文本，不做半截 JSON 语义解析（ADR-0003）。
+// sseWindow buffers text extracted from complete SSE lines. It does not parse partial JSON (ADR-0003).
 type sseWindow struct {
 	partial []byte
 	text    strings.Builder
@@ -24,7 +24,7 @@ func newSSEWindow(max int) *sseWindow {
 
 func (s *sseWindow) Text() string { return s.text.String() }
 
-// Feed 吃进原始 chunk，每凑齐一行 data: 就更新窗口并返回当前窗口快照（供插件扫描）。
+// Feed consumes a raw chunk. Each complete data: line updates the window and returns a snapshot for plugins.
 func (s *sseWindow) Feed(p []byte) []string {
 	if s == nil {
 		return nil
@@ -73,7 +73,7 @@ func (s *sseWindow) append(piece string) {
 	s.text.WriteString(all[len(all)-s.max:])
 }
 
-// extractStreamText 只解析完整 JSON 对象上的 delta.content；失败则忽略，不解析残缺 JSON。
+// extractStreamText reads delta.content from a complete JSON object. Failures are ignored; partial JSON is not parsed.
 func extractStreamText(payload []byte) string {
 	var obj struct {
 		Choices []struct {

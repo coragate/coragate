@@ -11,13 +11,13 @@ import (
 	"github.com/coragate/coragate/kernel"
 )
 
-// Store 默认文件适配器：一行一条 envelope JSON。不是内核数据模型。
+// Store is the default file adapter: one envelope JSON per line. Not the kernel data model.
 type Store struct {
 	path string
 	mu   sync.Mutex
 }
 
-// New 打开（或创建）JSONL 审计文件。
+// New opens (or creates) the JSONL audit file.
 func New(path string) (*Store, error) {
 	dir := filepath.Dir(path)
 	if dir != "" && dir != "." {

@@ -7,11 +7,11 @@ import (
 	"net/http"
 )
 
-// Version 为对外 SemVer。发布构建可用
-// -ldflags "-X github.com/coragate/coragate/kernel.Version=x.y.z" 覆盖。
+// Version is the public SemVer. Release builds may override it with
+// -ldflags "-X github.com/coragate/coragate/kernel.Version=x.y.z".
 var Version = "0.1.0-dev"
 
-// VersionInfo 是 CLI / 健康检查返回的版本面（AC-13）。
+// VersionInfo is the version surface returned by the CLI and health check (AC-13).
 type VersionInfo struct {
 	Version               string `json:"version"`
 	ConfigSchemaVersion   int    `json:"config_schema_version"`
@@ -19,7 +19,7 @@ type VersionInfo struct {
 	EnvelopeSchemaVersion int    `json:"envelope_schema_version"`
 }
 
-// CurrentVersion 汇总二进制版本与各状态 schema。
+// CurrentVersion aggregates the binary version and schema versions.
 func CurrentVersion() VersionInfo {
 	return VersionInfo{
 		Version:               Version,
@@ -29,7 +29,7 @@ func CurrentVersion() VersionInfo {
 	}
 }
 
-// WantVersion 表示进程应打印版本后退出，而不是启动监听。
+// WantVersion is true when the process should print the version and exit instead of listening.
 func WantVersion(args []string) bool {
 	for _, a := range args {
 		if a == "--version" || a == "-version" {
@@ -39,7 +39,7 @@ func WantVersion(args []string) bool {
 	return false
 }
 
-// WriteVersion 把版本与 schema 写到 CLI（人类可读）。
+// WriteVersion writes version and schema numbers to the CLI (human-readable).
 func WriteVersion(w io.Writer) {
 	v := CurrentVersion()
 	fmt.Fprintf(w, "coragate %s\nconfig_schema_version=%d rules_schema_version=%d envelope_schema_version=%d\n",

@@ -13,7 +13,7 @@ type chatMessage struct {
 	Content json.RawMessage `json:"content"`
 }
 
-// ExtractChatText 从 OpenAI chat 请求抽出可检测文本；解析失败则退回原文。
+// ExtractChatText pulls inspectable text from an OpenAI chat request. Parse failure returns the raw body.
 func ExtractChatText(body []byte) string {
 	var req chatRequest
 	if err := json.Unmarshal(body, &req); err != nil || len(req.Messages) == 0 {

@@ -8,24 +8,24 @@ import (
 	"github.com/coragate/coragate/kernel"
 )
 
-// DefaultPattern 第一期演示规则，避免误拦真实业务词。
+// DefaultPattern is the phase-1 demo rule, chosen not to collide with real business words.
 const DefaultPattern = `(?i)coragate-block-me`
 
 const defaultRuleID = "demo-keyword"
 
-// Rule 一条关键字/正则规则。
+// Rule is one keyword/regex rule.
 type Rule struct {
 	ID      string
 	Pattern string
 }
 
-// Plugin 内置检测插件，与内核同进程链接。
+// Plugin is the built-in detector, linked in-process with the kernel.
 type Plugin struct {
 	id string
 	re *regexp.Regexp
 }
 
-// New 编译一条规则。Pattern 为空时使用 DefaultPattern。
+// New compiles one rule. An empty Pattern uses DefaultPattern.
 func New(rule Rule) (*Plugin, error) {
 	id := rule.ID
 	if id == "" {

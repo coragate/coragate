@@ -34,7 +34,7 @@ var hopByHop = map[string]bool{
 	"Upgrade":             true,
 }
 
-// Handler 返回 OpenAI 兼容面。测试用 httptest 包一层即可。
+// Handler returns the OpenAI-compatible surface. Tests can wrap it with httptest.
 func Handler(cfg Config) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(chatPath, func(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +151,7 @@ func joinChatURL(base string) (string, error) {
 	path := strings.TrimSuffix(u.Path, "/")
 	switch {
 	case strings.HasSuffix(path, "/v1/chat/completions"):
-		// 已是完整路径
+		// Already a full path.
 	case strings.HasSuffix(path, "/v1"):
 		u.Path = path + "/chat/completions"
 	case path == "":
@@ -187,7 +187,7 @@ func copyResponseHeaders(dst, src http.Header) {
 	}
 }
 
-// copyFlushScan 边转发边扫：原始 chunk 立刻 Flush；完整 data: 行才进入滑动窗口并调插件。
+// copyFlushScan forwards while scanning: raw chunks Flush immediately; complete data: lines enter the sliding window and plugins.
 func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, cfg Config, inspectors []Inspector) (InspectResult, error) {
 	var last InspectResult
 	flusher, _ := dst.(http.Flusher)

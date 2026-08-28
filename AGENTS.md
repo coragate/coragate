@@ -2,7 +2,7 @@
 
 This repo implements [SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp). Architecture source of truth is **coragate-docs**—do not write a conflicting story here.
 
-Public docs are **English-primary** (ADR-0009). Chinese lives in `README.zh-CN.md`. While the repo is still private, code comments and test names may stay Chinese (ADR-0013); convert them at the OSS milestone.
+Public docs are **English-primary** (ADR-0009). Chinese lives in `README.zh-CN.md`. Production godoc is English; test names and assertion messages are still being converted.
 
 ## Hard constraints
 
