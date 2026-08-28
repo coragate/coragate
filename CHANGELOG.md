@@ -8,6 +8,7 @@
 
 ## Unreleased
 
+- T9：按 design §4 补齐审查类 AC（无 Next 聊天 BFF、默认 fail_open 文档、双宿主 README、内核无 SQLite 表）。
 - T8：明确验收「不启动控制面时数据面仍代理与拦截」。
 - T7：控制面规则编辑、沙盒调数据面 `/v1/inspect`、只读命中列表；数据面提供 `GET/PUT /v1/rules` 与 `GET /v1/audit`。
 - T6c：`--version` 与 `GET /health` 可查版本；配置 / 规则快照 / 审计 envelope 均带 `schema_version`。
