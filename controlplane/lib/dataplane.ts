@@ -22,7 +22,9 @@ export function dataplaneURL(path: string): string {
 export type RuleRow = {
   id: string;
   plugin?: string;
-  pattern: string;
+  pattern?: string;
+  type?: string;
+  action?: string;
 };
 
 export type RuleSnapshot = {
@@ -34,6 +36,8 @@ export type InspectResult = {
   hit: boolean;
   rule_id?: string;
   engine_error?: string;
+  entity_type?: string;
+  action?: string;
 };
 
 export type AuditItem = {
@@ -45,6 +49,9 @@ export type AuditItem = {
   policy_mode: string;
   outcome?: string;
   engine_error?: string;
+  entity_type?: string;
+  rule_action?: string;
+  intervention?: string;
 };
 
 async function dataplaneFetch(path: string, init?: RequestInit): Promise<Response> {

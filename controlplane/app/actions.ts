@@ -14,7 +14,16 @@ export async function saveRulesAction(
   formData: FormData
 ): Promise<ActionState> {
   const raw = String(formData.get("snapshot") ?? "");
-  let snap: { schema_version: number; rules: { id: string; plugin?: string; pattern: string }[] };
+  let snap: {
+    schema_version: number;
+    rules: {
+      id: string;
+      plugin?: string;
+      pattern?: string;
+      type?: string;
+      action?: string;
+    }[];
+  };
   try {
     snap = JSON.parse(raw) as typeof snap;
   } catch {
@@ -23,7 +32,13 @@ export async function saveRulesAction(
   try {
     await putRules({
       schema_version: snap.schema_version || 1,
-      rules: snap.rules ?? [],
+      rules: (snap.rules ?? []).map((r) => ({
+        id: r.id,
+        plugin: r.plugin,
+        pattern: r.pattern,
+        type: r.type,
+        action: r.action,
+      })),
     });
     revalidatePath("/");
     return { ok: true, message: "已写入数据面规则快照" };

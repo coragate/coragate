@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { RulesEditor } from "@/components/rules-editor";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -40,16 +41,6 @@ export function Console({
   const [inspectState, inspectFormAction, inspecting] = useActionState(
     inspectAction,
     idle
-  );
-  const snapshotJSON = JSON.stringify(
-    {
-      schema_version: rules.schema_version || 1,
-      rules: rules.rules?.length
-        ? rules.rules
-        : [{ id: "demo-keyword", plugin: "keyword", pattern: "(?i)coragate-block-me" }],
-    },
-    null,
-    2
   );
 
   return (
@@ -81,20 +72,16 @@ export function Console({
           <CardHeader>
             <CardTitle>规则快照</CardTitle>
             <CardDescription>
-              写入数据面 JSON 快照（含 schema_version），由数据面加载；本页不实现匹配。
+              选择插件、实体类型与 block/redact；保存到数据面。本页不实现匹配。
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form action={saveAction}>
               <FieldGroup>
-                <Field>
-                  <FieldLabel>规则 JSON</FieldLabel>
-                  <Textarea
-                    name="snapshot"
-                    defaultValue={snapshotJSON}
-                    className="min-h-48 font-mono text-sm"
-                  />
-                </Field>
+                <RulesEditor
+                  initial={rules.rules ?? []}
+                  schemaVersion={rules.schema_version || 1}
+                />
                 <Button type="submit" isLoading={saving}>
                   保存到数据面
                 </Button>
@@ -145,7 +132,15 @@ export function Console({
                 {inspectState.inspect.engine_error ? (
                   <Badge variant="destructive">引擎错误</Badge>
                 ) : inspectState.inspect.hit ? (
-                  <Badge variant="destructive">命中 {inspectState.inspect.rule_id}</Badge>
+                  <Badge variant="destructive">
+                    命中 {inspectState.inspect.rule_id}
+                    {inspectState.inspect.entity_type
+                      ? ` · ${inspectState.inspect.entity_type}`
+                      : ""}
+                    {inspectState.inspect.action
+                      ? ` · ${inspectState.inspect.action}`
+                      : ""}
+                  </Badge>
                 ) : (
                   <Badge variant="secondary">未命中</Badge>
                 )}
@@ -179,6 +174,8 @@ export function Console({
                   <TableRow>
                     <TableHead>时间</TableHead>
                     <TableHead>规则</TableHead>
+                    <TableHead>实体</TableHead>
+                    <TableHead>动作</TableHead>
                     <TableHead>结果</TableHead>
                     <TableHead>策略</TableHead>
                     <TableHead>哈希</TableHead>
@@ -189,6 +186,8 @@ export function Console({
                     <TableRow key={`${h.prompt_hash}-${h.time}-${i}`}>
                       <TableCell>{h.time}</TableCell>
                       <TableCell>{h.rule_id}</TableCell>
+                      <TableCell>{h.entity_type ?? "—"}</TableCell>
+                      <TableCell>{h.rule_action ?? "—"}</TableCell>
                       <TableCell>{h.outcome ?? "—"}</TableCell>
                       <TableCell>{h.policy_mode}</TableCell>
                       <TableCell className="max-w-40 truncate font-mono text-xs">
