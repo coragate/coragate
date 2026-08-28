@@ -1,116 +1,154 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import { ark } from "@ark-ui/react/factory";
+import type React from "react";
+import { cn } from "@/lib/utils";
 
-import { cn } from "@/lib/utils"
+interface TableProps extends React.ComponentProps<typeof ark.table> {
+  /**
+   * Whether the table rows are hoverable.
+   *
+   * @default true
+   */
+  isHoverable?: boolean;
+  /**
+   * The variant of the table.
+   *
+   * @default "plain"
+   */
+  variant?: "plain" | "striped";
+}
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+export const Table = (props: TableProps) => {
+  const { variant = "plain", isHoverable = true, className, ...rest } = props;
+
   return (
-    <div
-      data-slot="table-container"
-      className="relative w-full overflow-x-auto"
-    >
-      <table
+    <div className="relative w-full overflow-auto" data-slot="table-wrapper">
+      <ark.table
+        className={cn(
+          "group/table",
+          "w-full",
+          "caption-bottom",
+          "text-foreground text-sm",
+          className
+        )}
+        data-hoverable={isHoverable}
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
+        data-variant={variant}
+        {...rest}
       />
     </div>
-  )
-}
+  );
+};
 
-function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
+export const TableHeader = (props: React.ComponentProps<typeof ark.thead>) => {
+  const { className, ...rest } = props;
+
   return (
-    <thead
-      data-slot="table-header"
+    <ark.thead
       className={cn("[&_tr]:border-b", className)}
-      {...props}
+      data-slot="table-header"
+      {...rest}
     />
-  )
-}
+  );
+};
 
-function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
+export interface TableBodyProps
+  extends React.ComponentProps<typeof ark.tbody> {}
+
+export const TableBody = (props: TableBodyProps) => {
+  const { className, ...rest } = props;
+
   return (
-    <tbody
-      data-slot="table-body"
+    <ark.tbody
       className={cn("[&_tr:last-child]:border-0", className)}
-      {...props}
+      data-slot="table-body"
+      {...rest}
     />
-  )
-}
+  );
+};
 
-function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
+export const TableFooter = (props: React.ComponentProps<typeof ark.tfoot>) => {
+  const { className, ...rest } = props;
+
   return (
-    <tfoot
+    <ark.tfoot
+      className={cn(
+        "border-t",
+        "bg-muted/48",
+        "font-medium",
+        "last:[&>tr]:border-b-0",
+        className
+      )}
       data-slot="table-footer"
+      {...rest}
+    />
+  );
+};
+
+export const TableRow = (props: React.ComponentProps<typeof ark.tr>) => {
+  const { className, ...rest } = props;
+
+  return (
+    <ark.tr
       className={cn(
-        "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+        "border-b",
+        "data-[state=selected]:bg-muted",
+        "group-data-[variant=striped]/table:even:bg-muted/30",
+        "group-data-[hoverable=true]/table:[&:has(td):hover]:bg-muted/48",
         className
       )}
-      {...props}
-    />
-  )
-}
-
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
-  return (
-    <tr
       data-slot="table-row"
+      {...rest}
+    />
+  );
+};
+
+export const TableHead = (props: React.ComponentProps<typeof ark.th>) => {
+  const { className, ...rest } = props;
+
+  return (
+    <ark.th
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        "h-10 px-2",
+        "text-left align-middle",
+        "font-medium text-muted-foreground",
+        "rtl:text-right",
+        "has-[[role=checkbox]]:ps-2 has-[[role=checkbox]]:pe-0",
         className
       )}
-      {...props}
-    />
-  )
-}
-
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
-  return (
-    <th
       data-slot="table-head"
+      {...rest}
+    />
+  );
+};
+
+export const TableCell = (props: React.ComponentProps<typeof ark.td>) => {
+  const { className, ...rest } = props;
+
+  return (
+    <ark.td
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+        "whitespace-nowrap p-2 align-middle",
+        "has-[[role=checkbox]]:ps-2 has-[[role=checkbox]]:pe-0",
         className
       )}
-      {...props}
-    />
-  )
-}
-
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
-  return (
-    <td
       data-slot="table-cell"
-      className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
-        className
-      )}
-      {...props}
+      {...rest}
     />
-  )
-}
+  );
+};
 
-function TableCaption({
-  className,
-  ...props
-}: React.ComponentProps<"caption">) {
+export const TableCaption = (
+  props: React.ComponentProps<typeof ark.caption>
+) => {
+  const { className, ...rest } = props;
+
   return (
-    <caption
+    <ark.caption
+      className={cn("mt-4", "text-muted-foreground text-sm", className)}
       data-slot="table-caption"
-      className={cn("mt-4 text-sm text-muted-foreground", className)}
-      {...props}
+      {...rest}
     />
-  )
-}
-
-export {
-  Table,
-  TableHeader,
-  TableBody,
-  TableFooter,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableCaption,
-}
+  );
+};

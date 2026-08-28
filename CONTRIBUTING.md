@@ -14,7 +14,7 @@ This repo is the **open-source product**. Architecture and acceptance criteria l
 
 - Only the Go dataplane writes SSE for `/v1/chat/completions`. The Next control plane must not BFF the chat stream.
 - The dataplane is a fleet: document both `hosts/client` (`127.0.0.1`) and `hosts/cluster` (`0.0.0.0`).
-- Install UI components with the shadcn CLI; icons are Lucide.
+- Install UI components with `shadcn add @shark/<component>` (Shark UI). Icons are Lucide.
 - Persistence goes through storage adapters; do not weld SQLite DDL into `kernel/`.
 
 ## Pull requests

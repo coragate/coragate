@@ -1,6 +1,6 @@
 # 控制面
 
-Next.js App Router + shadcn/ui（图标 Lucide）。规则编辑、沙盒、只读命中列表。
+Next.js App Router + Shark UI（Ark 注册表，图标 Lucide）。规则编辑、沙盒、只读命中列表。
 
 英文源：[README.md](README.md)（ADR-0009）。
 

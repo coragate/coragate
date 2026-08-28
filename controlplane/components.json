@@ -21,5 +21,7 @@
   },
   "menuColor": "default",
   "menuAccent": "subtle",
-  "registries": {}
+  "registries": {
+    "@shark": "https://shark.vini.one/r/{name}.json"
+  }
 }

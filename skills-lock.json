@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "shark-ui": {
+      "source": "sharkui-inc/shark-ui",
+      "sourceType": "github",
+      "skillPath": "skills/shark-ui/SKILL.md",
+      "computedHash": "a64e44b218843413d9ef1ea1514dd0941e631defe04eedabf72f125f2e36a99f"
+    }
+  }
+}

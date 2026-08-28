@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 
 const idle: ActionState = { ok: true, message: "" };
 
@@ -53,30 +53,30 @@ export function Console({
   );
 
   return (
-    <Tabs defaultValue="rules">
+    <Tabs defaultValue="rules" className="gap-4">
       <TabsList>
-        <TabsTrigger value="rules">
-          <Shield data-icon="inline-start" />
+        <TabsTab value="rules">
+          <Shield aria-hidden data-icon="inline-start" />
           规则
-        </TabsTrigger>
-        <TabsTrigger value="sandbox">
-          <FlaskConical data-icon="inline-start" />
+        </TabsTab>
+        <TabsTab value="sandbox">
+          <FlaskConical aria-hidden data-icon="inline-start" />
           沙盒
-        </TabsTrigger>
-        <TabsTrigger value="hits">
-          <List data-icon="inline-start" />
+        </TabsTab>
+        <TabsTab value="hits">
+          <List aria-hidden data-icon="inline-start" />
           命中
-        </TabsTrigger>
+        </TabsTab>
       </TabsList>
 
       {dataplaneError ? (
-        <p className="mt-4 text-sm text-destructive">
+        <p className="text-sm text-destructive">
           数据面不可达（{dataplaneError}）。请先启动 Go 数据面，并设置{" "}
           <code className="font-mono">DATAPLANE_BASE_URL</code>。
         </p>
       ) : null}
 
-      <TabsContent value="rules" className="mt-4">
+      <TabsPanel value="rules">
         <Card>
           <CardHeader>
             <CardTitle>规则快照</CardTitle>
@@ -85,28 +85,37 @@ export function Console({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={saveAction} className="flex flex-col gap-3">
-              <Label htmlFor="snapshot">规则 JSON</Label>
-              <Textarea
-                id="snapshot"
-                name="snapshot"
-                defaultValue={snapshotJSON}
-                className="min-h-48 font-mono text-sm"
-              />
-              <Button type="submit" disabled={saving}>
-                {saving ? "保存中…" : "保存到数据面"}
-              </Button>
-              {saveState.message ? (
-                <p className={saveState.ok ? "text-muted-foreground text-sm" : "text-destructive text-sm"}>
-                  {saveState.message}
-                </p>
-              ) : null}
+            <form action={saveAction}>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel>规则 JSON</FieldLabel>
+                  <Textarea
+                    name="snapshot"
+                    defaultValue={snapshotJSON}
+                    className="min-h-48 font-mono text-sm"
+                  />
+                </Field>
+                <Button type="submit" isLoading={saving}>
+                  保存到数据面
+                </Button>
+                {saveState.message ? (
+                  <p
+                    className={
+                      saveState.ok
+                        ? "text-muted-foreground text-sm"
+                        : "text-destructive text-sm"
+                    }
+                  >
+                    {saveState.message}
+                  </p>
+                ) : null}
+              </FieldGroup>
             </form>
           </CardContent>
         </Card>
-      </TabsContent>
+      </TabsPanel>
 
-      <TabsContent value="sandbox" className="mt-4">
+      <TabsPanel value="sandbox">
         <Card>
           <CardHeader>
             <CardTitle>沙盒</CardTitle>
@@ -116,12 +125,20 @@ export function Console({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={inspectFormAction} className="flex flex-col gap-3">
-              <Label htmlFor="text">粘贴文本</Label>
-              <Textarea id="text" name="text" placeholder="please coragate-block-me" className="min-h-32" />
-              <Button type="submit" disabled={inspecting}>
-                {inspecting ? "检测中…" : "调用数据面检测"}
-              </Button>
+            <form action={inspectFormAction}>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel>粘贴文本</FieldLabel>
+                  <Textarea
+                    name="text"
+                    placeholder="please coragate-block-me"
+                    className="min-h-32"
+                  />
+                </Field>
+                <Button type="submit" isLoading={inspecting}>
+                  调用数据面检测
+                </Button>
+              </FieldGroup>
             </form>
             {inspectState.inspect ? (
               <div className="mt-4 flex items-center gap-2">
@@ -143,9 +160,9 @@ export function Console({
             ) : null}
           </CardContent>
         </Card>
-      </TabsContent>
+      </TabsPanel>
 
-      <TabsContent value="hits" className="mt-4">
+      <TabsPanel value="hits">
         <Card>
           <CardHeader>
             <CardTitle>命中列表</CardTitle>
@@ -170,7 +187,7 @@ export function Console({
                 <TableBody>
                   {hits.map((h, i) => (
                     <TableRow key={`${h.prompt_hash}-${h.time}-${i}`}>
-                      <TableCell className="whitespace-nowrap">{h.time}</TableCell>
+                      <TableCell>{h.time}</TableCell>
                       <TableCell>{h.rule_id}</TableCell>
                       <TableCell>{h.outcome ?? "—"}</TableCell>
                       <TableCell>{h.policy_mode}</TableCell>
@@ -184,7 +201,7 @@ export function Console({
             )}
           </CardContent>
         </Card>
-      </TabsContent>
+      </TabsPanel>
     </Tabs>
   );
 }

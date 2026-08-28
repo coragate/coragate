@@ -1,90 +1,143 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { Tabs as TabsPrimitive } from "radix-ui"
+import { Tabs as ArkTabs, useTabsContext } from "@ark-ui/react/tabs";
+import type React from "react";
+import { tv, type VariantProps } from "tailwind-variants";
+import { cn } from "@/lib/utils";
 
-import { cn } from "@/lib/utils"
+export const useTabs = useTabsContext;
 
-function Tabs({
-  className,
-  orientation = "horizontal",
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.Root>) {
+export const Tabs = (props: React.ComponentProps<typeof ArkTabs.Root>) => {
+  const { lazyMount = true, unmountOnExit = true, className, ...rest } = props;
+
   return (
-    <TabsPrimitive.Root
-      data-slot="tabs"
-      data-orientation={orientation}
+    <ArkTabs.Root
       className={cn(
-        "group/tabs flex gap-2 data-horizontal:flex-col",
+        "flex flex-col gap-2",
+        "data-[orientation=vertical]:flex-row",
         className
       )}
-      {...props}
+      data-slot="tabs"
+      lazyMount={lazyMount}
+      unmountOnExit={unmountOnExit}
+      {...rest}
     />
-  )
-}
+  );
+};
 
-const tabsListVariants = cva(
-  "group/tabs-list inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none",
-  {
-    variants: {
-      variant: {
-        default: "bg-muted",
-        line: "gap-1 bg-transparent",
+const tabsListVariants = tv({
+  slots: {
+    base: [
+      "relative z-0",
+      "w-fit",
+      "text-muted-foreground",
+      "flex items-center justify-center gap-x-0.5",
+      "data-[orientation=vertical]:flex-col",
+    ],
+    indicator: [
+      "absolute inset-s-0 bottom-0",
+      "h-(--height) w-(--width)",
+      "transition-[width,translate] duration-200 ease-in-out",
+      "motion-reduce:transition-none!",
+    ],
+  },
+  variants: {
+    variant: {
+      default: {
+        base: ["rounded-lg"],
+        indicator: ["-z-1 rounded-lg bg-accent"],
+      },
+      underline: {
+        base: [
+          "data-[orientation=vertical]:px-1",
+          "data-[orientation=horizontal]:py-1",
+          "*:data-[slot=tabs-tab]:hover:bg-accent",
+        ],
+        indicator: [
+          "z-10",
+          "absolute bottom-0",
+          "bg-primary",
+          "data-[orientation=horizontal]:h-0.5",
+          "data-[orientation=vertical]:w-0.5",
+        ],
       },
     },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+});
+interface TabsListProps
+  extends React.ComponentProps<typeof ArkTabs.List>,
+    VariantProps<typeof tabsListVariants> {}
 
-function TabsList({
-  className,
-  variant = "default",
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.List> &
-  VariantProps<typeof tabsListVariants>) {
+export const TabsList = (props: TabsListProps) => {
+  const { variant = "default", className, children, ...rest } = props;
+
+  const { base, indicator } = tabsListVariants({ variant });
+
   return (
-    <TabsPrimitive.List
+    <ArkTabs.List
+      className={cn(base(), className)}
       data-slot="tabs-list"
-      data-variant={variant}
-      className={cn(tabsListVariants({ variant }), className)}
-      {...props}
-    />
-  )
-}
+      {...rest}
+    >
+      {children}
 
-function TabsTrigger({
-  className,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+      <ArkTabs.Indicator
+        className={cn(indicator())}
+        data-slot="tab-indicator"
+      />
+    </ArkTabs.List>
+  );
+};
+
+export const TabsTrigger = (
+  props: React.ComponentProps<typeof ArkTabs.Trigger>
+) => {
+  const { className, ...rest } = props;
+
   return (
-    <TabsPrimitive.Trigger
-      data-slot="tabs-trigger"
+    <ArkTabs.Trigger
       className={cn(
-        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 dark:text-muted-foreground dark:hover:text-foreground group-data-[variant=default]/tabs-list:data-active:shadow-sm group-data-[variant=line]/tabs-list:data-active:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
-        "data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground",
-        "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
+        "relative",
+        "h-9 sm:h-8",
+        "flex shrink-0 grow items-center justify-center gap-1.5",
+        "px-[calc(--spacing(2.5)-1px)]",
+        "whitespace-nowrap font-medium text-sm",
+        "rounded-lg border border-transparent",
+        "cursor-pointer",
+        "transition-[color,background-color,box-shadow]",
+        "data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start",
+        "hover:text-foreground/72",
+        "aria-selected:text-foreground",
+        "outline-none focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-ring/32",
+        "data-disabled:pointer-events-none data-disabled:opacity-64",
+        "[&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:-mx-0.5 [&_svg]:shrink-0",
+        "motion-reduce:transition-none!",
         className
       )}
-      {...props}
+      data-slot="tabs-trigger"
+      {...rest}
     />
-  )
-}
+  );
+};
 
-function TabsContent({
-  className,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.Content>) {
+export const TabsContent = (
+  props: React.ComponentProps<typeof ArkTabs.Content>
+) => {
+  const { className, ...rest } = props;
+
   return (
-    <TabsPrimitive.Content
+    <ArkTabs.Content
+      className={cn("flex-1 outline-none", className)}
       data-slot="tabs-content"
-      className={cn("flex-1 text-sm outline-none", className)}
-      {...props}
+      {...rest}
     />
-  )
-}
+  );
+};
 
-export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }
+/** Shark 规范名：与 TabsTrigger 同一 Ark 部件 */
+export const TabsTab = TabsTrigger;
+/** Shark 规范名：与 TabsContent 同一 Ark 部件 */
+export const TabsPanel = TabsContent;

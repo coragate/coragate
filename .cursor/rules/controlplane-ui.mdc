@@ -1,0 +1,8 @@
+---
+description: Control plane UI uses Shark UI (Ark registry)
+globs: controlplane/**/*
+---
+
+# Control plane UI
+
+New components: `pnpm dlx shadcn@latest add @shark/<name>` (ADR-0015). Do not add official Radix shadcn as the main stack. Read the project `shark-ui` skill first. Icons: Lucide via `components.json` `iconLibrary`. No Next chat BFF.

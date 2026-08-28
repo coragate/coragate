@@ -28,7 +28,7 @@ Same kernel, two default binds. Override with `CORAGATE_LISTEN`. Point the OpenA
 ## Processes
 
 - **Dataplane (Go):** hot path. Only Go writes SSE for `/v1/chat/completions`. The gateway still proxies if the panel is down.
-- **Control plane (Next.js App Router + shadcn/ui):** rules / sandbox / hits. `controlplane/` must not BFF the chat stream.
+- **Control plane (Next.js App Router + Shark UI):** rules / sandbox / hits. `controlplane/` must not BFF the chat stream.
 
 The dataplane already proxies `POST /v1/chat/completions`: sync inspect on input; sliding-window scan on output SSE; async audit via a file adapter (`data/audit.jsonl`—envelope JSON, not a SQLite schema). Rules are a versioned JSON snapshot (default `data/rules.json`), reloaded on a short poll, `POST /v1/reload`, or `PUT /v1/rules`. Config snapshots also carry `schema_version` (see `examples/config.json`). `enforce` blocks on input hits before upstream; `observe` still forwards and audits. If the detection engine is down, the default is **`fail_open`** (forward and tag `engine_error`); only `CORAGATE_FAIL_MODE=fail_closed` rejects. Sandbox: `POST /v1/inspect`. Version: `coragate --version` or `GET /health`. The panel edits rules, calls the dataplane sandbox, and lists hits; it does not forward chat.
 

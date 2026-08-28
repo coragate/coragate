@@ -14,7 +14,7 @@
 
 - `/v1/chat/completions` 的 SSE 只由 Go 数据面写。Next 控制面禁止做聊天流 BFF。
 - 数据面是舰队：文档必须同时给出 `hosts/client`（`127.0.0.1`）与 `hosts/cluster`（`0.0.0.0`）。
-- 控制面组件用 shadcn CLI 安装；图标用 Lucide。
+- 控制面组件用 `shadcn add @shark/<component>`（Shark UI）；图标用 Lucide。
 - 持久化走存储适配器；禁止把 SQLite DDL 焊进 `kernel/`。
 
 ## Pull request

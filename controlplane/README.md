@@ -1,6 +1,6 @@
 # Control plane
 
-Next.js App Router + shadcn/ui (Lucide icons). Rules editor, sandbox, read-only hit list.
+Next.js App Router + Shark UI (Ark registry, Lucide icons). Rules editor, sandbox, read-only hit list.
 
 Chinese: [README.zh-CN.md](README.zh-CN.md).
 
