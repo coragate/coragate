@@ -15,6 +15,7 @@ const (
 	chatPath          = "/v1/chat/completions"
 	inspectPath       = "/v1/inspect"
 	reloadPath        = "/v1/reload"
+	healthPath        = "/health"
 	headerGatewayMark = "X-Coragate-Proxy"
 	headerHitRule     = "X-Coragate-Hit"
 )
@@ -43,6 +44,7 @@ func Handler(cfg Config) http.Handler {
 	mux.HandleFunc(reloadPath, func(w http.ResponseWriter, r *http.Request) {
 		handleReload(cfg, w, r)
 	})
+	mux.HandleFunc(healthPath, handleHealth)
 	return mux
 }
 

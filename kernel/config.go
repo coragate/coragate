@@ -1,6 +1,8 @@
 package kernel
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 )
@@ -86,4 +88,39 @@ func parseFailMode(s string) string {
 
 func (c Config) failClosed() bool {
 	return parseFailMode(c.FailMode) == FailClosed
+}
+
+// ConfigSchemaVersion 是运行配置快照的当前 schema。无版本字段视为不透明 blob，拒绝解析。
+const ConfigSchemaVersion = 1
+
+// ConfigSnapshot 是可识别版本的配置形状（AC-13）。不是某张 SQL 表；密钥不进快照。
+type ConfigSnapshot struct {
+	SchemaVersion int    `json:"schema_version"`
+	Listen        string `json:"listen,omitempty"`
+	PolicyMode    string `json:"policy_mode,omitempty"`
+	FailMode      string `json:"fail_mode,omitempty"`
+	RulesPath     string `json:"rules_path,omitempty"`
+}
+
+// Snapshot 导出当前非机密配置，供健康检查与升级识别。
+func (c Config) Snapshot() ConfigSnapshot {
+	return ConfigSnapshot{
+		SchemaVersion: ConfigSchemaVersion,
+		Listen:        c.Listen,
+		PolicyMode:    c.policyMode(),
+		FailMode:      parseFailMode(c.FailMode),
+		RulesPath:     c.RulesPath,
+	}
+}
+
+// ParseConfigSnapshot 解析配置 JSON；缺少或未知 schema_version 一律拒绝。
+func ParseConfigSnapshot(b []byte) (ConfigSnapshot, error) {
+	var snap ConfigSnapshot
+	if err := json.Unmarshal(b, &snap); err != nil {
+		return ConfigSnapshot{}, fmt.Errorf("配置快照 JSON: %w", err)
+	}
+	if snap.SchemaVersion != ConfigSchemaVersion {
+		return ConfigSnapshot{}, fmt.Errorf("不支持的配置快照 schema_version=%d，需要 %d", snap.SchemaVersion, ConfigSchemaVersion)
+	}
+	return snap, nil
 }

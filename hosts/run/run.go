@@ -14,6 +14,10 @@ import (
 
 // Main 组装内置插件并启动数据面。内核本身不 import 具体插件包。
 func Main(host kernel.HostKind) {
+	if kernel.WantVersion(os.Args[1:]) {
+		kernel.WriteVersion(os.Stdout)
+		return
+	}
 	cfg := kernel.LoadConfig(host)
 	rulesPath := envOr("CORAGATE_RULES_PATH", "data/rules.json")
 	rs := kernel.NewRuleset(compileSnapshot)
