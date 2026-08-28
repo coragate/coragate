@@ -14,6 +14,7 @@ import (
 const (
 	chatPath          = "/v1/chat/completions"
 	inspectPath       = "/v1/inspect"
+	reloadPath        = "/v1/reload"
 	headerGatewayMark = "X-Coragate-Proxy"
 	headerHitRule     = "X-Coragate-Hit"
 )
@@ -39,6 +40,9 @@ func Handler(cfg Config) http.Handler {
 	mux.HandleFunc(inspectPath, func(w http.ResponseWriter, r *http.Request) {
 		handleInspect(cfg, w, r)
 	})
+	mux.HandleFunc(reloadPath, func(w http.ResponseWriter, r *http.Request) {
+		handleReload(cfg, w, r)
+	})
 	return mux
 }
 
@@ -62,7 +66,8 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 		cfg.enqueueAudit(body, started, inputHit, outputHit, outcome)
 	}()
 
-	inputHit = InspectInput(r.Context(), cfg.Inspectors, ExtractChatText(body))
+	inspectors := cfg.inspectors()
+	inputHit = InspectInput(r.Context(), inspectors, ExtractChatText(body))
 	if inputHit.Hit {
 		w.Header().Set(headerHitRule, inputHit.RuleID)
 		if cfg.policyMode() == PolicyEnforce {
@@ -105,7 +110,7 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(headerHitRule, inputHit.RuleID)
 	}
 	w.WriteHeader(resp.StatusCode)
-	outputHit, _ = copyFlushScan(r.Context(), w, resp.Body, cfg)
+	outputHit, _ = copyFlushScan(r.Context(), w, resp.Body, cfg, inspectors)
 	if outputHit.Hit && cfg.policyMode() == PolicyEnforce {
 		outcome = "blocked"
 	}
@@ -160,7 +165,7 @@ func copyResponseHeaders(dst, src http.Header) {
 }
 
 // copyFlushScan 边转发边扫：原始 chunk 立刻 Flush；完整 data: 行才进入滑动窗口并调插件。
-func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, cfg Config) (InspectResult, error) {
+func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, cfg Config, inspectors []Inspector) (InspectResult, error) {
 	var last InspectResult
 	flusher, _ := dst.(http.Flusher)
 	win := newSSEWindow(defaultWindowBytes)
@@ -175,9 +180,9 @@ func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, 
 			if flusher != nil {
 				flusher.Flush()
 			}
-			if len(cfg.Inspectors) > 0 {
+			if len(inspectors) > 0 {
 				for _, snap := range win.Feed(chunk) {
-					hit := InspectOutputWindow(ctx, cfg.Inspectors, snap)
+					hit := InspectOutputWindow(ctx, inspectors, snap)
 					if hit.Hit {
 						last = hit
 						if cfg.policyMode() == PolicyEnforce {

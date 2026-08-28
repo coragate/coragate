@@ -20,7 +20,17 @@ type Config struct {
 	HTTPClient      *http.Client
 	PolicyMode      string
 	Inspectors      []Inspector
+	Rules           *Ruleset
+	RulesPath       string
 	Auditor         *Auditor
+}
+
+// inspectors 单次请求读取当前插件。Rules 存在时以快照为准，便于 reload 后新请求立刻换规则。
+func (c Config) inspectors() []Inspector {
+	if c.Rules != nil {
+		return c.Rules.Inspectors()
+	}
+	return c.Inspectors
 }
 
 func (c Config) client() *http.Client {

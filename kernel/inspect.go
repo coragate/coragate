@@ -44,7 +44,7 @@ func handleInspect(cfg Config, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":{"message":"invalid json","type":"coragate_error"}}`, http.StatusBadRequest)
 		return
 	}
-	hit := InspectInput(r.Context(), cfg.Inspectors, req.Text)
+	hit := InspectInput(r.Context(), cfg.inspectors(), req.Text)
 	w.Header().Set("Content-Type", "application/json")
 	if hit.Hit {
 		w.Header().Set(headerHitRule, hit.RuleID)
