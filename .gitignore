@@ -1,0 +1,21 @@
+# 密钥与本地环境
+.env
+.env.local
+*.pem
+
+# Go
+bin/
+dist/
+*.exe
+*.test
+coverage.out
+
+# Node / Next（控制面）
+node_modules/
+.next/
+out/
+.turbo
+
+# 系统
+.DS_Store
+*.log
