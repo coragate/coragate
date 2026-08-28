@@ -8,6 +8,7 @@
 
 ## Unreleased
 
+- T7：控制面规则编辑、沙盒调数据面 `/v1/inspect`、只读命中列表；数据面提供 `GET/PUT /v1/rules` 与 `GET /v1/audit`。
 - T6c：`--version` 与 `GET /health` 可查版本；配置 / 规则快照 / 审计 envelope 均带 `schema_version`。
 - T6b：同一内核两套宿主默认监听（本机 `127.0.0.1`、集群 `0.0.0.0`）。
 - T6：检测引擎不可用默认 fail-open（审计 `engine_error`）；显式 `fail_closed` 才拒绝；observe 命中不阻断。

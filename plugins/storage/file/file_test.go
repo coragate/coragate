@@ -48,3 +48,30 @@ func TestAC14_文件适配器可按schema读回(t *testing.T) {
 		t.Fatalf("schema_version=%d", env.SchemaVersion)
 	}
 }
+
+func TestList返回最新N条(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "audit.jsonl")
+	st, err := New(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, id := range []string{"old", "mid", "new"} {
+		if err := st.Append(context.Background(), kernel.Envelope{
+			SchemaVersion: kernel.EnvelopeSchemaVersion,
+			Time:          time.Now().UTC().Format(time.RFC3339Nano),
+			RuleID:        id,
+			PromptHash:    "h",
+			PolicyMode:    kernel.PolicyEnforce,
+			DurationMS:    int64(i),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := st.List(context.Background(), 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].RuleID != "mid" || got[1].RuleID != "new" {
+		t.Fatalf("应取最新两条: %+v", got)
+	}
+}

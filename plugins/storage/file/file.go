@@ -63,9 +63,12 @@ func (s *Store) List(_ context.Context, limit int) ([]kernel.Envelope, error) {
 			return out, err
 		}
 		out = append(out, env)
-		if limit > 0 && len(out) >= limit {
-			break
-		}
 	}
-	return out, sc.Err()
+	if err := sc.Err(); err != nil {
+		return out, err
+	}
+	if limit > 0 && len(out) > limit {
+		out = out[len(out)-limit:]
+	}
+	return out, nil
 }

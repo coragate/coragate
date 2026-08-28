@@ -59,3 +59,11 @@ func (a *Auditor) Close() {
 	a.once.Do(func() { close(a.ch) })
 	<-a.done
 }
+
+// List 只读查询已 flush 的 envelope。控制面看板走本接口，不直接 SELECT 存储实现。
+func (a *Auditor) List(ctx context.Context, limit int) ([]Envelope, error) {
+	if a == nil || a.store == nil {
+		return nil, nil
+	}
+	return a.store.List(ctx, limit)
+}
