@@ -13,6 +13,8 @@ Chinese notes for historical T0–T10 work remain in git history; new changelog 
 - Breaking: detection plugins return all matches (`InspectResult.Matches`); the host merges every plugin instead of stopping at the first hit (SPEC-pii-entities).
 - Built-in `pii` detector (email, CN phone, CN id card, bank card); default action is redact. Input enforce+redact rebuilds `messages[].content` JSON; prompt hash still uses the original body.
 - Streaming output redact holds back up to 254 runes and rewrites complete `data:` lines so entity plaintext is not flushed (SPEC-pii-entities AC-4).
+- `hosts/client` and `hosts/cluster` compile the same `pii` plugin; PII is not a Cloud-only DLP product.
+- Control plane: pick plugin, entity type, and block/redact (Shark UI); sandbox still calls dataplane `POST /v1/inspect`.
 
 - Apache License 2.0 (`LICENSE` / `NOTICE`) (ADR-0014).
 - Public docs: English README as source, Chinese in `README.zh-CN.md` (ADR-0009).

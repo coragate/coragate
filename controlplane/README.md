@@ -1,6 +1,6 @@
 # Control plane
 
-Next.js App Router + Shark UI (Ark registry, Lucide icons). Rules editor, sandbox, read-only hit list.
+Next.js App Router + Shark UI (Ark registry, Lucide icons). Rules editor (plugin, entity type, block/redact), sandbox, read-only hit list. The panel does not run PII regex—detection stays on the dataplane.
 
 Chinese: [README.zh-CN.md](README.zh-CN.md).
 
@@ -17,4 +17,4 @@ cd controlplane
 pnpm dev
 ```
 
-Spec: [SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp)
+Spec: [SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp) · [SPEC-pii-entities](https://github.com/coragate/coragate-docs/tree/main/docs/specs/pii-entities)

@@ -4,7 +4,7 @@
 
 [English README](README.md) is the source (ADR-0009). This file is the Chinese translation.
 
-**规范真源（不要在本仓另写冲突架构）：** [SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp)
+**规范真源（不要在本仓另写冲突架构）：** [SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp) · [SPEC-pii-entities](https://github.com/coragate/coragate-docs/tree/main/docs/specs/pii-entities)
 
 组织文档仓：https://github.com/coragate/coragate-docs
 
@@ -30,7 +30,7 @@
 - **数据面（Go）**：热路径。`/v1/chat/completions` 只由 Go 写 SSE。面板没启动时数据面仍应能代理。
 - **控制面（Next.js App Router + Shark UI）**：规则 / 沙盒 / 看板。`controlplane/` 禁止做聊天流 BFF。
 
-当前数据面已代理 `POST /v1/chat/completions`：输入同步检测；输出 SSE 滑动窗口边读边扫；审计异步写入文件适配器（`data/audit.jsonl`，规范是 envelope JSON，不是 SQLite 表）。规则来自带 `schema_version` 的 JSON 快照（默认 `data/rules.json`），改文件后短轮询加载，也可 `POST /v1/reload` 或 `PUT /v1/rules`。配置快照同样带 `schema_version`（见 `examples/config.json`）。`enforce` 输入命中不打上游；`observe` 命中仍转发并审计。检测引擎不可用时**默认 `fail_open`**（放行，审计打 `engine_error`）；只有显式 `CORAGATE_FAIL_MODE=fail_closed` 才拒绝。沙盒：`POST /v1/inspect`。版本：`coragate --version` 或 `GET /health`。控制面编辑规则、调数据面沙盒、只读命中列表，不转发聊天流。
+当前数据面已代理 `POST /v1/chat/completions`：输入同步检测；输出 SSE 滑动窗口边读边扫；审计异步写入文件适配器（`data/audit.jsonl`，规范是 envelope JSON，不是 SQLite 表）。规则来自带 `schema_version` 的 JSON 快照（默认 `data/rules.json`），改文件后短轮询加载，也可 `POST /v1/reload` 或 `PUT /v1/rules`。配置快照同样带 `schema_version`（见 `examples/config.json`）。`enforce` 下动作为 **block** 的输入命中不打上游；动作为 **redact** 的 PII 替换后再转发；`observe` 命中仍转发并审计、不改写。检测引擎不可用时**默认 `fail_open`**（放行，审计打 `engine_error`）；只有显式 `CORAGATE_FAIL_MODE=fail_closed` 才拒绝。沙盒：`POST /v1/inspect`。版本：`coragate --version` 或 `GET /health`。控制面编辑规则（插件、实体类型、block/redact）、调数据面沙盒、只读命中列表，不转发聊天流。
 
 ```bash
 export CORAGATE_UPSTREAM_BASE_URL=https://api.openai.com
@@ -47,13 +47,31 @@ go run ./hosts/client/cmd/coragate --version
 curl -sS http://127.0.0.1:8080/health
 ```
 
-演示拦截：用户消息含 `coragate-block-me` 时返回 403，上游不会收到请求。沙盒：
+演示 **拦截**：用户消息含 `coragate-block-me` 时返回 403，上游不会收到请求。沙盒：
 
 ```bash
 curl -sS http://127.0.0.1:8080/v1/inspect \
   -H 'Content-Type: application/json' \
   -d '{"text":"please coragate-block-me"}'
 ```
+
+## 内置 PII（第一批）
+
+邮箱、大陆手机号、居民身份证号、银行卡号由进程内 **`pii` 插件**检测（`plugins/detect/pii`）。**`hosts/client` 与 `hosts/cluster` 编译同一套插件**——不是「必须上云的 DLP」，也不需要 CoraGate Cloud 账号。
+
+PII 规则**默认 redact**（占位符 `[REDACTED:<type>]`，例如 `[REDACTED:email]`）。关键字演示规则仍默认 **block**。v1 快照省略 `action` 时按上述缺省（见 `examples/rules.json`）。
+
+```json
+{ "id": "pii-email", "plugin": "pii", "type": "email" }
+```
+
+```bash
+curl -sS http://127.0.0.1:8080/v1/inspect \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"alice@example.com"}'
+```
+
+检测插件改为返回**全部命中**，宿主汇合所有插件（Inspector 破坏性变更，见 [CHANGELOG](CHANGELOG.md)）。规范：[SPEC-pii-entities](https://github.com/coragate/coragate-docs/tree/main/docs/specs/pii-entities)。
 
 改规则：编辑 `data/rules.json`（示例见 `examples/rules.json`），等最多约 1 秒或手动刷新：
 

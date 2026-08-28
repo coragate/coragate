@@ -81,6 +81,80 @@ func TestAC10_BuiltInKeywordPluginExists(t *testing.T) {
 	}
 }
 
+func TestAC5_ExamplesPIIOmitsActionDefaultsRedact(t *testing.T) {
+	raw := readRepoFile(t, "examples/rules.json")
+	if !strings.Contains(raw, `"plugin": "pii"`) {
+		t.Fatal("examples/rules.json must include a pii rule")
+	}
+	if strings.Contains(raw, `"action"`) {
+		t.Fatal("examples/rules.json must omit action so pii defaults to redact")
+	}
+	readme := readRepoFile(t, "README.md")
+	for _, want := range []string{"default to redact", "plugin\": \"pii\"", "hosts/client", "hosts/cluster"} {
+		if !strings.Contains(readme, want) {
+			t.Fatalf("README missing %q", want)
+		}
+	}
+}
+
+func TestAC10_READMESamePIIPluginNoCloudDLP(t *testing.T) {
+	en := readRepoFile(t, "README.md")
+	zh := readRepoFile(t, "README.zh-CN.md")
+	for _, want := range []string{"pii", "hosts/client", "hosts/cluster", "same plugin"} {
+		if !strings.Contains(en, want) {
+			t.Fatalf("English README missing %q", want)
+		}
+	}
+	for _, bad := range []string{"must use Cloud DLP", "mandatory cloud DLP", "the only DLP is Cloud"} {
+		if strings.Contains(en, bad) {
+			t.Fatalf("README must not require cloud DLP: %q", bad)
+		}
+	}
+	if !strings.Contains(zh, "同一套插件") && !strings.Contains(zh, "同一插件") {
+		t.Fatal("Chinese README must say both hosts share the same plugin")
+	}
+	if !strings.Contains(zh, "不是「必须上云的 DLP」") {
+		t.Fatal("Chinese README must reject mandatory cloud DLP")
+	}
+}
+
+func TestAC6_ControlPlaneHasNoEntityRegex(t *testing.T) {
+	root := filepath.Join(repoRoot(t), "controlplane")
+	needles := []string{
+		`alice@example.com`,
+		`1[3-9]\\d{9}`,
+		`440524`,
+		`4111111111111111`,
+		`[REDACTED:`,
+	}
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		name := d.Name()
+		if d.IsDir() && (name == "node_modules" || name == ".next") {
+			return filepath.SkipDir
+		}
+		if d.IsDir() || !(strings.HasSuffix(name, ".ts") || strings.HasSuffix(name, ".tsx")) {
+			return nil
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		s := string(b)
+		for _, n := range needles {
+			if strings.Contains(s, n) {
+				t.Errorf("control plane must not embed PII fixtures/regex: %s has %q", path, n)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestAC12_READMEShowsClientAndCluster(t *testing.T) {
 	readme := readRepoFile(t, "README.md")
 	for _, want := range []string{"hosts/client", "hosts/cluster", "127.0.0.1", "0.0.0.0", "fleet"} {

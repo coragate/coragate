@@ -1,6 +1,6 @@
 # 控制面
 
-Next.js App Router + Shark UI（Ark 注册表，图标 Lucide）。规则编辑、沙盒、只读命中列表。
+Next.js App Router + Shark UI（Ark 注册表，图标 Lucide）。规则编辑（插件、实体类型、block/redact）、沙盒、只读命中列表。面板不跑 PII 正则——检测留在数据面。
 
 英文源：[README.md](README.md)（ADR-0009）。
 
@@ -17,4 +17,4 @@ cd controlplane
 pnpm dev
 ```
 
-规范：[SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp)
+规范：[SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp) · [SPEC-pii-entities](https://github.com/coragate/coragate-docs/tree/main/docs/specs/pii-entities)

@@ -4,7 +4,7 @@ A low-latency, streaming-first LLM security proxy (dataplane + control plane mon
 
 Chinese translation: [README.zh-CN.md](README.zh-CN.md). English is the source (ADR-0009).
 
-**Spec source of truth (do not fork a conflicting architecture here):** [SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp)
+**Spec source of truth (do not fork a conflicting architecture here):** [SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp) · [SPEC-pii-entities](https://github.com/coragate/coragate-docs/tree/main/docs/specs/pii-entities)
 
 Org docs: https://github.com/coragate/coragate-docs
 
@@ -30,7 +30,7 @@ Same kernel, two default binds. Override with `CORAGATE_LISTEN`. Point the OpenA
 - **Dataplane (Go):** hot path. Only Go writes SSE for `/v1/chat/completions`. The gateway still proxies if the panel is down.
 - **Control plane (Next.js App Router + Shark UI):** rules / sandbox / hits. `controlplane/` must not BFF the chat stream.
 
-The dataplane already proxies `POST /v1/chat/completions`: sync inspect on input; sliding-window scan on output SSE; async audit via a file adapter (`data/audit.jsonl`—envelope JSON, not a SQLite schema). Rules are a versioned JSON snapshot (default `data/rules.json`), reloaded on a short poll, `POST /v1/reload`, or `PUT /v1/rules`. Config snapshots also carry `schema_version` (see `examples/config.json`). `enforce` blocks on input hits before upstream; `observe` still forwards and audits. If the detection engine is down, the default is **`fail_open`** (forward and tag `engine_error`); only `CORAGATE_FAIL_MODE=fail_closed` rejects. Sandbox: `POST /v1/inspect`. Version: `coragate --version` or `GET /health`. The panel edits rules, calls the dataplane sandbox, and lists hits; it does not forward chat.
+The dataplane already proxies `POST /v1/chat/completions`: sync inspect on input; sliding-window scan on output SSE; async audit via a file adapter (`data/audit.jsonl`—envelope JSON, not a SQLite schema). Rules are a versioned JSON snapshot (default `data/rules.json`), reloaded on a short poll, `POST /v1/reload`, or `PUT /v1/rules`. Config snapshots also carry `schema_version` (see `examples/config.json`). `enforce` blocks on input **block** hits before upstream, and **redacts** PII before forwarding when the rule action is redact; `observe` still forwards and audits without rewrite. If the detection engine is down, the default is **`fail_open`** (forward and tag `engine_error`); only `CORAGATE_FAIL_MODE=fail_closed` rejects. Sandbox: `POST /v1/inspect`. Version: `coragate --version` or `GET /health`. The panel edits rules (plugin, entity type, block/redact), calls the dataplane sandbox, and lists hits; it does not forward chat.
 
 ```bash
 export CORAGATE_UPSTREAM_BASE_URL=https://api.openai.com
@@ -47,13 +47,31 @@ go run ./hosts/client/cmd/coragate --version
 curl -sS http://127.0.0.1:8080/health
 ```
 
-Demo block: a user message containing `coragate-block-me` returns 403 and the upstream is not called. Sandbox:
+Demo **block**: a user message containing `coragate-block-me` returns 403 and the upstream is not called. Sandbox:
 
 ```bash
 curl -sS http://127.0.0.1:8080/v1/inspect \
   -H 'Content-Type: application/json' \
   -d '{"text":"please coragate-block-me"}'
 ```
+
+## Built-in PII (first batch)
+
+Email, mainland CN mobile, CN national ID, and bank card are detected by the in-process **`pii` plugin** (`plugins/detect/pii`). **`hosts/client` and `hosts/cluster` compile the same plugin**—this is not a Cloud-only DLP product and does not require a CoraGate Cloud account.
+
+PII rules **default to redact** (placeholder `[REDACTED:<type>]`, e.g. `[REDACTED:email]`). Keyword demo rules still default to **block**. If `action` is omitted on a v1 snapshot, those defaults apply (see `examples/rules.json`).
+
+```json
+{ "id": "pii-email", "plugin": "pii", "type": "email" }
+```
+
+```bash
+curl -sS http://127.0.0.1:8080/v1/inspect \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"alice@example.com"}'
+```
+
+Detection plugins now return **all matches**; the host merges every plugin (breaking Inspector API — see [CHANGELOG](CHANGELOG.md)). Spec: [SPEC-pii-entities](https://github.com/coragate/coragate-docs/tree/main/docs/specs/pii-entities).
 
 Change rules: edit `data/rules.json` (see `examples/rules.json`), wait ~1s, or reload:
 
