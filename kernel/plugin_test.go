@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 type stubInspector struct {
@@ -63,7 +64,7 @@ func TestAC4_enforce命中不打上游(t *testing.T) {
 	}
 }
 
-func TestAC4_observe命中仍转发(t *testing.T) {
+func TestAC4_observe命中仍转发且审计(t *testing.T) {
 	var hit atomic.Bool
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hit.Store(true)
@@ -72,9 +73,14 @@ func TestAC4_observe命中仍转发(t *testing.T) {
 	}))
 	t.Cleanup(up.Close)
 
+	ch := make(chan Envelope, 1)
+	a := NewAuditor(&captureStore{ch: ch}, 8)
+	t.Cleanup(a.Close)
+
 	gw := httptest.NewServer(Handler(Config{
 		UpstreamBaseURL: up.URL,
 		PolicyMode:      PolicyObserve,
+		Auditor:         a,
 		Inspectors:      []Inspector{stubInspector{needle: "secret", id: "t-block"}},
 	}))
 	t.Cleanup(gw.Close)
@@ -93,6 +99,20 @@ func TestAC4_observe命中仍转发(t *testing.T) {
 	}
 	if resp.Header.Get(headerHitRule) != "t-block" {
 		t.Fatal("observe 也应标记命中规则")
+	}
+	select {
+	case env := <-ch:
+		if env.PolicyMode != PolicyObserve {
+			t.Fatalf("policy_mode=%s", env.PolicyMode)
+		}
+		if env.RuleID != "t-block" {
+			t.Fatalf("rule_id=%s", env.RuleID)
+		}
+		if env.Outcome != OutcomeForwarded {
+			t.Fatalf("observe 不应把 outcome 写成阻断: %s", env.Outcome)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("observe 未写入审计")
 	}
 }
 

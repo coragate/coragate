@@ -19,6 +19,7 @@ type Config struct {
 	UpstreamBaseURL string
 	HTTPClient      *http.Client
 	PolicyMode      string
+	FailMode        string
 	Inspectors      []Inspector
 	Rules           *Ruleset
 	RulesPath       string
@@ -59,6 +60,7 @@ func LoadConfig(host HostKind) Config {
 		Listen:          listen,
 		UpstreamBaseURL: os.Getenv("CORAGATE_UPSTREAM_BASE_URL"),
 		PolicyMode:      mode,
+		FailMode:        parseFailMode(os.Getenv("CORAGATE_FAIL_MODE")),
 	}
 }
 
@@ -67,4 +69,15 @@ func (c Config) policyMode() string {
 		return PolicyObserve
 	}
 	return PolicyEnforce
+}
+
+func parseFailMode(s string) string {
+	if s == FailClosed {
+		return FailClosed
+	}
+	return FailOpen
+}
+
+func (c Config) failClosed() bool {
+	return parseFailMode(c.FailMode) == FailClosed
 }

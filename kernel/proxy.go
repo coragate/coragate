@@ -61,17 +61,24 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 
 	started := time.Now()
 	var inputHit, outputHit InspectResult
-	outcome := "forwarded"
+	outcome := OutcomeForwarded
 	defer func() {
 		cfg.enqueueAudit(body, started, inputHit, outputHit, outcome)
 	}()
 
 	inspectors := cfg.inspectors()
 	inputHit = InspectInput(r.Context(), inspectors, ExtractChatText(body))
-	if inputHit.Hit {
+	if inputHit.EngineError != "" {
+		if cfg.failClosed() {
+			outcome = OutcomeFailClosed
+			writeEngineClosed(w)
+			return
+		}
+		outcome = OutcomeFailOpen
+	} else if inputHit.Hit {
 		w.Header().Set(headerHitRule, inputHit.RuleID)
 		if cfg.policyMode() == PolicyEnforce {
-			outcome = "blocked"
+			outcome = OutcomeBlocked
 			writeBlocked(w, inputHit.RuleID)
 			return
 		}
@@ -111,8 +118,14 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(resp.StatusCode)
 	outputHit, _ = copyFlushScan(r.Context(), w, resp.Body, cfg, inspectors)
-	if outputHit.Hit && cfg.policyMode() == PolicyEnforce {
-		outcome = "blocked"
+	if outputHit.EngineError != "" {
+		if cfg.failClosed() {
+			outcome = OutcomeFailClosed
+		} else {
+			outcome = OutcomeFailOpen
+		}
+	} else if outputHit.Hit && cfg.policyMode() == PolicyEnforce {
+		outcome = OutcomeBlocked
 	}
 }
 
@@ -183,6 +196,13 @@ func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, 
 			if len(inspectors) > 0 {
 				for _, snap := range win.Feed(chunk) {
 					hit := InspectOutputWindow(ctx, inspectors, snap)
+					if hit.EngineError != "" {
+						last = hit
+						if cfg.failClosed() {
+							return last, nil
+						}
+						continue
+					}
 					if hit.Hit {
 						last = hit
 						if cfg.policyMode() == PolicyEnforce {

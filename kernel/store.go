@@ -17,6 +17,7 @@ type Envelope struct {
 	PromptHash    string `json:"prompt_hash"`
 	PolicyMode    string `json:"policy_mode"`
 	Outcome       string `json:"outcome,omitempty"`
+	EngineError   string `json:"engine_error,omitempty"`
 }
 
 // Store 存储适配器。内核只认本接口，默认实现可以是文件或 SQLite。

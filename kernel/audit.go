@@ -22,6 +22,10 @@ func (c Config) enqueueAudit(body []byte, started time.Time, input, output Inspe
 	if output.Hit {
 		rule = output.RuleID
 	}
+	engineErr := input.EngineError
+	if output.EngineError != "" {
+		engineErr = output.EngineError
+	}
 	c.Auditor.Enqueue(Envelope{
 		SchemaVersion: EnvelopeSchemaVersion,
 		Time:          started.UTC().Format(time.RFC3339Nano),
@@ -30,5 +34,6 @@ func (c Config) enqueueAudit(body []byte, started time.Time, input, output Inspe
 		PromptHash:    promptHash(body),
 		PolicyMode:    c.policyMode(),
 		Outcome:       outcome,
+		EngineError:   engineErr,
 	})
 }

@@ -22,11 +22,12 @@
 - **数据面（Go）**：热路径。`/v1/chat/completions` 只由 Go 写 SSE。面板没启动时数据面仍应能代理（T1 起）。
 - **控制面（Next.js App Router + shadcn/ui）**：规则 / 沙盒 / 看板。`controlplane/` 禁止做聊天流 BFF。
 
-当前数据面已代理 `POST /v1/chat/completions`：输入同步检测；输出 SSE 滑动窗口边读边扫；审计异步写入文件适配器（`data/audit.jsonl`，规范是 envelope JSON，不是 SQLite 表）。规则来自带 `schema_version` 的 JSON 快照（默认 `data/rules.json`），改文件后短轮询加载，也可 `POST /v1/reload`。`enforce` 输入命中不打上游。沙盒：`POST /v1/inspect`。控制面仍是空壳（T7）。
+当前数据面已代理 `POST /v1/chat/completions`：输入同步检测；输出 SSE 滑动窗口边读边扫；审计异步写入文件适配器（`data/audit.jsonl`，规范是 envelope JSON，不是 SQLite 表）。规则来自带 `schema_version` 的 JSON 快照（默认 `data/rules.json`），改文件后短轮询加载，也可 `POST /v1/reload`。`enforce` 输入命中不打上游；`observe` 命中仍转发并审计。检测引擎不可用时**默认 `fail_open`**（放行，审计打 `engine_error`）；只有显式 `CORAGATE_FAIL_MODE=fail_closed` 才拒绝。沙盒：`POST /v1/inspect`。控制面仍是空壳（T7）。
 
 ```bash
 export CORAGATE_UPSTREAM_BASE_URL=https://api.openai.com
 # 可选：CORAGATE_POLICY_MODE=enforce
+# 可选：CORAGATE_FAIL_MODE=fail_open
 # 可选：CORAGATE_RULES_PATH=data/rules.json
 go run ./hosts/client/cmd/coragate
 ```
