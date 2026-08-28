@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- T4：审计异步队列 + versioned envelope；默认文件 JSONL 适配器。
 - T3：输出 SSE 滑动窗口边读边扫（插件 `InspectOutputWindow`）。
 - T2：插件宿主 + 内置关键字/正则；enforce 命中不打上游；`POST /v1/inspect` 沙盒。
 - T1：OpenAI 兼容 `POST /v1/chat/completions` SSE 透传代理。

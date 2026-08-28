@@ -6,6 +6,7 @@ import (
 
 	"github.com/coragate/coragate/kernel"
 	"github.com/coragate/coragate/plugins/detect/keyword"
+	"github.com/coragate/coragate/plugins/storage/file"
 )
 
 // Main 组装内置插件并启动数据面。内核本身不 import 具体插件包。
@@ -20,6 +21,13 @@ func Main(host kernel.HostKind) {
 		os.Exit(1)
 	}
 	cfg.Inspectors = []kernel.Inspector{p}
+	auditPath := envOr("CORAGATE_AUDIT_PATH", "data/audit.jsonl")
+	st, err := file.New(auditPath)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+	cfg.Auditor = kernel.NewAuditor(st, 256)
 	if err := kernel.ListenAndServe(cfg); err != nil {
 		log.Println(err)
 		os.Exit(1)

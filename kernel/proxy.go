@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 const (
@@ -54,11 +55,19 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 	}
 	_ = r.Body.Close()
 
-	hit := InspectInput(r.Context(), cfg.Inspectors, ExtractChatText(body))
-	if hit.Hit {
-		w.Header().Set(headerHitRule, hit.RuleID)
+	started := time.Now()
+	var inputHit, outputHit InspectResult
+	outcome := "forwarded"
+	defer func() {
+		cfg.enqueueAudit(body, started, inputHit, outputHit, outcome)
+	}()
+
+	inputHit = InspectInput(r.Context(), cfg.Inspectors, ExtractChatText(body))
+	if inputHit.Hit {
+		w.Header().Set(headerHitRule, inputHit.RuleID)
 		if cfg.policyMode() == PolicyEnforce {
-			writeBlocked(w, hit.RuleID)
+			outcome = "blocked"
+			writeBlocked(w, inputHit.RuleID)
 			return
 		}
 	}
@@ -92,11 +101,14 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 
 	copyResponseHeaders(w.Header(), resp.Header)
 	w.Header().Set(headerGatewayMark, "1")
-	if hit.Hit {
-		w.Header().Set(headerHitRule, hit.RuleID)
+	if inputHit.Hit {
+		w.Header().Set(headerHitRule, inputHit.RuleID)
 	}
 	w.WriteHeader(resp.StatusCode)
-	_ = copyFlushScan(r.Context(), w, resp.Body, cfg)
+	outputHit, _ = copyFlushScan(r.Context(), w, resp.Body, cfg)
+	if outputHit.Hit && cfg.policyMode() == PolicyEnforce {
+		outcome = "blocked"
+	}
 }
 
 func joinChatURL(base string) (string, error) {
@@ -148,7 +160,8 @@ func copyResponseHeaders(dst, src http.Header) {
 }
 
 // copyFlushScan 边转发边扫：原始 chunk 立刻 Flush；完整 data: 行才进入滑动窗口并调插件。
-func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, cfg Config) error {
+func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, cfg Config) (InspectResult, error) {
+	var last InspectResult
 	flusher, _ := dst.(http.Flusher)
 	win := newSSEWindow(defaultWindowBytes)
 	buf := make([]byte, 4096)
@@ -157,7 +170,7 @@ func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, 
 		if n > 0 {
 			chunk := buf[:n]
 			if _, werr := dst.Write(chunk); werr != nil {
-				return werr
+				return last, werr
 			}
 			if flusher != nil {
 				flusher.Flush()
@@ -165,17 +178,20 @@ func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, 
 			if len(cfg.Inspectors) > 0 {
 				for _, snap := range win.Feed(chunk) {
 					hit := InspectOutputWindow(ctx, cfg.Inspectors, snap)
-					if hit.Hit && cfg.policyMode() == PolicyEnforce {
-						return nil
+					if hit.Hit {
+						last = hit
+						if cfg.policyMode() == PolicyEnforce {
+							return last, nil
+						}
 					}
 				}
 			}
 		}
 		if err == io.EOF {
-			return nil
+			return last, nil
 		}
 		if err != nil {
-			return err
+			return last, err
 		}
 	}
 }

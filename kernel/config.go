@@ -20,6 +20,7 @@ type Config struct {
 	HTTPClient      *http.Client
 	PolicyMode      string
 	Inspectors      []Inspector
+	Auditor         *Auditor
 }
 
 func (c Config) client() *http.Client {
