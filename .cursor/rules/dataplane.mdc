@@ -7,7 +7,7 @@ alwaysApply: true
 
 Spec source: [SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp).
 
-Public README is English; Chinese is `README.zh-CN.md` (ADR-0009). Production godoc is English; test names may still be Chinese until the rest of the OSS comment pass.
+Public README is English; Chinese is `README.zh-CN.md` (ADR-0009). Production godoc and Go tests are English.
 
 ## Must
 

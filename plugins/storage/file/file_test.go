@@ -11,7 +11,7 @@ import (
 	"github.com/coragate/coragate/kernel"
 )
 
-func TestAC14_文件适配器可按schema读回(t *testing.T) {
+func TestAC14_FileAdapterRoundTripsSchema(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "audit.jsonl")
 	st, err := New(path)
 	if err != nil {
@@ -42,14 +42,14 @@ func TestAC14_文件适配器可按schema读回(t *testing.T) {
 	}
 	var env kernel.Envelope
 	if err := json.Unmarshal(raw, &env); err != nil {
-		t.Fatalf("换适配器应仍能按 JSON schema 反序列化: %v raw=%s", err, raw)
+		t.Fatalf("adapter should still unmarshal JSON schema: %v raw=%s", err, raw)
 	}
 	if env.SchemaVersion != kernel.EnvelopeSchemaVersion {
 		t.Fatalf("schema_version=%d", env.SchemaVersion)
 	}
 }
 
-func TestList返回最新N条(t *testing.T) {
+func TestListReturnsLatestN(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "audit.jsonl")
 	st, err := New(path)
 	if err != nil {
@@ -72,6 +72,6 @@ func TestList返回最新N条(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(got) != 2 || got[0].RuleID != "mid" || got[1].RuleID != "new" {
-		t.Fatalf("应取最新两条: %+v", got)
+		t.Fatalf("want latest two: %+v", got)
 	}
 }

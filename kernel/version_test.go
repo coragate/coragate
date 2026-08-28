@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestAC13_健康检查含版本与schema(t *testing.T) {
+func TestAC13_HealthIncludesVersionAndSchema(t *testing.T) {
 	gw := httptest.NewServer(Handler(Config{}))
 	t.Cleanup(gw.Close)
 	resp, err := http.Get(gw.URL + "/health")
@@ -19,14 +19,14 @@ func TestAC13_健康检查含版本与schema(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("状态码 = %d", resp.StatusCode)
+		t.Fatalf("status = %d", resp.StatusCode)
 	}
 	var info VersionInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
 		t.Fatal(err)
 	}
 	if info.Version == "" {
-		t.Fatal("缺少 version")
+		t.Fatal("missing version")
 	}
 	if info.ConfigSchemaVersion != ConfigSchemaVersion {
 		t.Fatalf("config_schema_version=%d", info.ConfigSchemaVersion)
@@ -39,30 +39,30 @@ func TestAC13_健康检查含版本与schema(t *testing.T) {
 	}
 }
 
-func TestAC13_CLI可查版本(t *testing.T) {
+func TestAC13_CLIReportsVersion(t *testing.T) {
 	if !WantVersion([]string{"--version"}) || !WantVersion([]string{"-version"}) {
-		t.Fatal("--version 应被识别")
+		t.Fatal("--version should be recognized")
 	}
 	if WantVersion(nil) || WantVersion([]string{"serve"}) {
-		t.Fatal("无版本参数不应当成查版本")
+		t.Fatal("missing version flag should not be treated as --version")
 	}
 	var buf bytes.Buffer
 	WriteVersion(&buf)
 	got := buf.String()
 	if !strings.Contains(got, Version) {
-		t.Fatalf("CLI 输出缺少版本: %s", got)
+		t.Fatalf("CLI output missing version: %s", got)
 	}
 	if !strings.Contains(got, "config_schema_version=") || !strings.Contains(got, "rules_schema_version=") {
-		t.Fatalf("CLI 输出缺少 schema: %s", got)
+		t.Fatalf("CLI output missing schema: %s", got)
 	}
 }
 
-func TestAC13_配置快照必须带schema_version(t *testing.T) {
+func TestAC13_ConfigSnapshotRequiresSchemaVersion(t *testing.T) {
 	if _, err := ParseConfigSnapshot([]byte(`{"listen":"127.0.0.1:8080"}`)); err == nil {
-		t.Fatal("缺少 schema_version 的配置应拒绝")
+		t.Fatal("config without schema_version should be rejected")
 	}
 	if _, err := ParseConfigSnapshot([]byte(`{"schema_version":2,"listen":"x"}`)); err == nil {
-		t.Fatal("未知 schema_version 应拒绝")
+		t.Fatal("unknown schema_version should be rejected")
 	}
 	snap, err := ParseConfigSnapshot([]byte(`{"schema_version":1,"listen":"127.0.0.1:8080","policy_mode":"enforce","fail_mode":"fail_open"}`))
 	if err != nil {
@@ -73,7 +73,7 @@ func TestAC13_配置快照必须带schema_version(t *testing.T) {
 	}
 }
 
-func TestAC13_LoadConfig可导出带版本快照(t *testing.T) {
+func TestAC13_LoadConfigExportsVersionedSnapshot(t *testing.T) {
 	t.Setenv("CORAGATE_LISTEN", "")
 	snap := LoadConfig(HostClient).Snapshot()
 	if snap.SchemaVersion != ConfigSchemaVersion {
@@ -87,12 +87,12 @@ func TestAC13_LoadConfig可导出带版本快照(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(b), `"schema_version"`) {
-		t.Fatalf("序列化后看不到 schema_version: %s", b)
+		t.Fatalf("serialized snapshot missing schema_version: %s", b)
 	}
 }
 
-func TestAC13_Changelog文件存在(t *testing.T) {
+func TestAC13_ChangelogFileExists(t *testing.T) {
 	if _, err := os.Stat("../CHANGELOG.md"); err != nil {
-		t.Fatalf("Changelog 占位文件应存在: %v", err)
+		t.Fatalf("Changelog file should exist: %v", err)
 	}
 }

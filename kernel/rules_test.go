@@ -18,7 +18,7 @@ func stubCompile(snap RuleSnapshot) ([]Inspector, error) {
 	out := make([]Inspector, 0, len(snap.Rules))
 	for _, r := range snap.Rules {
 		if r.Pattern == "COMPILE_FAIL" {
-			return nil, fmt.Errorf("编译失败")
+			return nil, fmt.Errorf("compile failed")
 		}
 		out = append(out, stubInspector{needle: r.Pattern, id: r.ID})
 	}
@@ -36,23 +36,23 @@ func writeRules(t *testing.T, path string, needle, id string) {
 	}
 }
 
-func TestParseSnapshot_必须带schema版本(t *testing.T) {
+func TestParseSnapshot_RequiresSchemaVersion(t *testing.T) {
 	if _, err := ParseSnapshot([]byte(`{"rules":[]}`)); err == nil {
-		t.Fatal("缺少 schema_version 应拒绝")
+		t.Fatal("missing schema_version should be rejected")
 	}
 	if _, err := ParseSnapshot([]byte(`{"schema_version":2,"rules":[]}`)); err == nil {
-		t.Fatal("未知 schema_version 应拒绝")
+		t.Fatal("unknown schema_version should be rejected")
 	}
 	snap, err := ParseSnapshot([]byte(`{"schema_version":1,"rules":[]}`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if snap.SchemaVersion != 1 || snap.Rules == nil {
-		t.Fatalf("快照 = %+v", snap)
+		t.Fatalf("snapshot = %+v", snap)
 	}
 }
 
-func TestAC8_reload后新请求用新规则(t *testing.T) {
+func TestAC8_ReloadAppliesNewRulesToNewRequests(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "rules.json")
 	writeRules(t, path, "alpha", "r-alpha")
@@ -90,14 +90,14 @@ func TestAC8_reload后新请求用新规则(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		t.Fatalf("reload 状态码 = %d body=%s", resp.StatusCode, body)
+		t.Fatalf("reload status = %d body=%s", resp.StatusCode, body)
 	}
 
 	assertInspect("contains alpha", false, "")
 	assertInspect("contains beta", true, "r-beta")
 }
 
-func TestAC8_reload失败保留旧规则(t *testing.T) {
+func TestAC8_FailedReloadKeepsOldRules(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "rules.json")
 	writeRules(t, path, "keep-me", "r-keep")
@@ -118,16 +118,16 @@ func TestAC8_reload失败保留旧规则(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("非法快照应 400，得到 %d", resp.StatusCode)
+		t.Fatalf("invalid snapshot should be 400, got %d", resp.StatusCode)
 	}
 
 	got := InspectInput(context.Background(), rs.Inspectors(), "please keep-me")
 	if !got.Hit || got.RuleID != "r-keep" {
-		t.Fatalf("失败 reload 不该丢掉旧规则: %+v", got)
+		t.Fatalf("failed reload must not drop old rules: %+v", got)
 	}
 }
 
-func TestAC8_短轮询加载新规则文件(t *testing.T) {
+func TestAC8_PollLoadsNewRulesFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "rules.json")
 	writeRules(t, path, "alpha", "r-alpha")
@@ -147,12 +147,12 @@ func TestAC8_短轮询加载新规则文件(t *testing.T) {
 		if got.Hit && got.RuleID == "r-beta" {
 			miss := InspectInput(context.Background(), rs.Inspectors(), "alpha only")
 			if miss.Hit {
-				t.Fatal("轮询后仍命中旧规则")
+				t.Fatal("still hitting old rule after poll")
 			}
 			return
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("短轮询未在 1s 内加载新规则")
+			t.Fatal("poll did not load new rules within 1s")
 		}
 		time.Sleep(20 * time.Millisecond)
 	}

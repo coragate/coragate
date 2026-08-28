@@ -30,7 +30,7 @@ func (s stubInspector) InspectOutputWindow(ctx context.Context, window string) I
 	return s.InspectInput(ctx, window)
 }
 
-func TestAC4_enforce命中不打上游(t *testing.T) {
+func TestAC4_EnforceHitSkipsUpstream(t *testing.T) {
 	var hit atomic.Bool
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hit.Store(true)
@@ -54,17 +54,17 @@ func TestAC4_enforce命中不打上游(t *testing.T) {
 	got, _ := io.ReadAll(resp.Body)
 
 	if hit.Load() {
-		t.Fatal("enforce 命中后仍打了上游")
+		t.Fatal("enforce hit still reached upstream")
 	}
 	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("状态码 = %d body=%s", resp.StatusCode, got)
+		t.Fatalf("status = %d body=%s", resp.StatusCode, got)
 	}
 	if resp.Header.Get(headerHitRule) != "t-block" {
-		t.Fatalf("缺少命中规则头: %v", resp.Header)
+		t.Fatalf("missing hit-rule header: %v", resp.Header)
 	}
 }
 
-func TestAC4_observe命中仍转发且审计(t *testing.T) {
+func TestAC4_ObserveHitStillForwardsAndAudits(t *testing.T) {
 	var hit atomic.Bool
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hit.Store(true)
@@ -92,13 +92,13 @@ func TestAC4_observe命中仍转发且审计(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if !hit.Load() {
-		t.Fatal("observe 应仍转发上游")
+		t.Fatal("observe should still forward upstream")
 	}
 	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("状态码 = %d", resp.StatusCode)
+		t.Fatalf("status = %d", resp.StatusCode)
 	}
 	if resp.Header.Get(headerHitRule) != "t-block" {
-		t.Fatal("observe 也应标记命中规则")
+		t.Fatal("observe should still mark the hit rule")
 	}
 	select {
 	case env := <-ch:
@@ -109,22 +109,22 @@ func TestAC4_observe命中仍转发且审计(t *testing.T) {
 			t.Fatalf("rule_id=%s", env.RuleID)
 		}
 		if env.Outcome != OutcomeForwarded {
-			t.Fatalf("observe 不应把 outcome 写成阻断: %s", env.Outcome)
+			t.Fatalf("observe must not set outcome to blocked: %s", env.Outcome)
 		}
 	case <-time.After(time.Second):
-		t.Fatal("observe 未写入审计")
+		t.Fatal("observe did not write audit")
 	}
 }
 
-func TestAC10_检测走插件接口(t *testing.T) {
+func TestAC10_DetectionGoesThroughPluginInterface(t *testing.T) {
 	p := stubInspector{needle: "needle", id: "t-block"}
 	r := InspectInput(context.Background(), []Inspector{p}, "find needle here")
 	if !r.Hit || r.RuleID != "t-block" {
-		t.Fatalf("插件未命中: %+v", r)
+		t.Fatalf("plugin did not hit: %+v", r)
 	}
 }
 
-func Test沙盒检测端点不走上游(t *testing.T) {
+func TestSandboxInspectDoesNotCallUpstream(t *testing.T) {
 	var hit atomic.Bool
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hit.Store(true)
@@ -147,9 +147,9 @@ func Test沙盒检测端点不走上游(t *testing.T) {
 		t.Fatal(err)
 	}
 	if hit.Load() {
-		t.Fatal("沙盒检测打了上游")
+		t.Fatal("sandbox inspect called upstream")
 	}
 	if !out.Hit || out.RuleID != "t-block" {
-		t.Fatalf("沙盒结果 = %+v", out)
+		t.Fatalf("sandbox result = %+v", out)
 	}
 }

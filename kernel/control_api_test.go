@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func Test控制面GET与PUT规则后新检测生效(t *testing.T) {
+func TestControlPlaneGETThenPUTRulesTakeEffect(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "rules.json")
 	writeRules(t, path, "alpha", "r-alpha")
@@ -33,7 +33,7 @@ func Test控制面GET与PUT规则后新检测生效(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got.SchemaVersion != RulesSchemaVersion || len(got.Rules) != 1 || got.Rules[0].ID != "r-alpha" {
-		t.Fatalf("GET 规则 = %+v", got)
+		t.Fatalf("GET rules = %+v", got)
 	}
 
 	body := `{"schema_version":1,"rules":[{"id":"r-beta","plugin":"keyword","pattern":"beta"}]}`
@@ -49,7 +49,7 @@ func Test控制面GET与PUT规则后新检测生效(t *testing.T) {
 	defer putResp.Body.Close()
 	if putResp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(putResp.Body)
-		t.Fatalf("PUT 状态码 = %d body=%s", putResp.StatusCode, b)
+		t.Fatalf("PUT status = %d body=%s", putResp.StatusCode, b)
 	}
 
 	ins, err := http.Post(gw.URL+"/v1/inspect", "application/json", strings.NewReader(`{"text":"contains beta"}`))
@@ -62,15 +62,15 @@ func Test控制面GET与PUT规则后新检测生效(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !out.Hit || out.RuleID != "r-beta" {
-		t.Fatalf("PUT 后沙盒未用新规则: %+v", out)
+		t.Fatalf("sandbox after PUT did not use new rules: %+v", out)
 	}
 }
 
-func Test控制面只读审计列表(t *testing.T) {
+func TestControlPlaneReadOnlyAuditList(t *testing.T) {
 	mem := &memStore{}
 	a := NewAuditor(mem, 8)
 	t.Cleanup(a.Close)
-	// 直接写入已 flush 的 envelope，看板读 Store 而不是 SQLite。
+	// Write a flushed envelope directly; the board reads Store, not SQLite.
 	if err := mem.Append(context.Background(), Envelope{
 		SchemaVersion: EnvelopeSchemaVersion,
 		Time:          time.Now().UTC().Format(time.RFC3339Nano),
@@ -96,7 +96,7 @@ func Test控制面只读审计列表(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(payload.Items) != 1 || payload.Items[0].RuleID != "r-hit" {
-		t.Fatalf("审计列表 = %+v", payload.Items)
+		t.Fatalf("audit list = %+v", payload.Items)
 	}
 }
 

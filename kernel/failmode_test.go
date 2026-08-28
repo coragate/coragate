@@ -23,7 +23,7 @@ func (panicInspector) InspectOutputWindow(context.Context, string) InspectResult
 	panic("engine down")
 }
 
-func TestAC9_默认fail_open放行并打标(t *testing.T) {
+func TestAC9_DefaultFailOpenForwardsAndTags(t *testing.T) {
 	var hit atomic.Bool
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hit.Store(true)
@@ -49,25 +49,25 @@ func TestAC9_默认fail_open放行并打标(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if !hit.Load() {
-		t.Fatal("默认 fail_open 应仍转发上游")
+		t.Fatal("default fail_open should still forward upstream")
 	}
 	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("状态码 = %d", resp.StatusCode)
+		t.Fatalf("status = %d", resp.StatusCode)
 	}
 	select {
 	case env := <-ch:
 		if env.EngineError == "" {
-			t.Fatal("fail_open 审计应带 engine_error")
+			t.Fatal("fail_open audit should include engine_error")
 		}
 		if env.Outcome != OutcomeFailOpen {
 			t.Fatalf("outcome=%s", env.Outcome)
 		}
 	case <-time.After(time.Second):
-		t.Fatal("未收到 envelope")
+		t.Fatal("did not receive envelope")
 	}
 }
 
-func TestAC9_fail_closed才拒绝(t *testing.T) {
+func TestAC9_FailClosedRejects(t *testing.T) {
 	var hit atomic.Bool
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hit.Store(true)
@@ -93,37 +93,37 @@ func TestAC9_fail_closed才拒绝(t *testing.T) {
 	defer resp.Body.Close()
 	got, _ := io.ReadAll(resp.Body)
 	if hit.Load() {
-		t.Fatal("fail_closed 不应打上游")
+		t.Fatal("fail_closed should not call upstream")
 	}
 	if resp.StatusCode != http.StatusServiceUnavailable {
-		t.Fatalf("状态码 = %d body=%s", resp.StatusCode, got)
+		t.Fatalf("status = %d body=%s", resp.StatusCode, got)
 	}
 	select {
 	case env := <-ch:
 		if env.EngineError == "" {
-			t.Fatal("fail_closed 审计应带 engine_error")
+			t.Fatal("fail_closed audit should include engine_error")
 		}
 		if env.Outcome != OutcomeFailClosed {
 			t.Fatalf("outcome=%s", env.Outcome)
 		}
 	case <-time.After(time.Second):
-		t.Fatal("未收到 envelope")
+		t.Fatal("did not receive envelope")
 	}
 }
 
-func TestAC9_空配置即fail_open(t *testing.T) {
+func TestAC9_EmptyConfigIsFailOpen(t *testing.T) {
 	if (Config{}).failClosed() {
-		t.Fatal("未配置 FailMode 不得视为 fail_closed")
+		t.Fatal("unset FailMode must not be fail_closed")
 	}
 	if parseFailMode("") != FailOpen || parseFailMode("nope") != FailOpen {
-		t.Fatal("未知值应回退 fail_open")
+		t.Fatal("unknown value should fall back to fail_open")
 	}
 	if parseFailMode(FailClosed) != FailClosed {
-		t.Fatal("显式 fail_closed 才关闭")
+		t.Fatal("only explicit fail_closed closes")
 	}
 }
 
-func TestLoadConfig默认fail_open(t *testing.T) {
+func TestLoadConfigDefaultsFailOpen(t *testing.T) {
 	t.Setenv("CORAGATE_FAIL_MODE", "")
 	cfg := LoadConfig(HostClient)
 	if cfg.FailMode != FailOpen {

@@ -30,7 +30,7 @@ func (b *blockStore) Append(_ context.Context, env Envelope) error {
 
 func (b *blockStore) List(context.Context, int) ([]Envelope, error) { return nil, nil }
 
-func TestAC7_Enqueue不等待适配器(t *testing.T) {
+func TestAC7_EnqueueDoesNotWaitOnAdapter(t *testing.T) {
 	st := &blockStore{enter: make(chan struct{}), wait: make(chan struct{})}
 	a := NewAuditor(st, 8)
 	t.Cleanup(func() {
@@ -46,16 +46,16 @@ func TestAC7_Enqueue不等待适配器(t *testing.T) {
 		PolicyMode:    PolicyEnforce,
 	})
 	if time.Since(t0) > 80*time.Millisecond {
-		t.Fatal("Enqueue 阻塞在 flush 上")
+		t.Fatal("Enqueue blocked on flush")
 	}
 	select {
 	case <-st.enter:
 	case <-time.After(time.Second):
-		t.Fatal("worker 未调用 Append")
+		t.Fatal("worker did not call Append")
 	}
 }
 
-func TestAC7_SSE完成不等落盘(t *testing.T) {
+func TestAC7_SSECompletesWithoutWaitingOnDisk(t *testing.T) {
 	st := &blockStore{enter: make(chan struct{}), wait: make(chan struct{})}
 	a := NewAuditor(st, 8)
 	t.Cleanup(func() {
@@ -81,16 +81,16 @@ func TestAC7_SSE完成不等落盘(t *testing.T) {
 	_, _ = io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
 	if time.Since(t0) > 500*time.Millisecond {
-		t.Fatal("SSE 主路径像在等审计落盘")
+		t.Fatal("SSE hot path looks like it waited on audit flush")
 	}
 	select {
 	case <-st.enter:
 	case <-time.After(time.Second):
-		t.Fatal("请求完成后 worker 仍未 Append")
+		t.Fatal("worker still has not Append after request")
 	}
 }
 
-func TestAC7_envelope字段(t *testing.T) {
+func TestAC7_EnvelopeFields(t *testing.T) {
 	ch := make(chan Envelope, 1)
 	st := &captureStore{ch: ch}
 	a := NewAuditor(st, 8)
@@ -120,10 +120,10 @@ func TestAC7_envelope字段(t *testing.T) {
 			t.Fatalf("rule_id=%s", env.RuleID)
 		}
 		if env.PromptHash == "" || env.PolicyMode == "" || env.Time == "" {
-			t.Fatalf("缺字段: %+v", env)
+			t.Fatalf("missing fields: %+v", env)
 		}
 	case <-time.After(time.Second):
-		t.Fatal("未收到 envelope")
+		t.Fatal("did not receive envelope")
 	}
 }
 

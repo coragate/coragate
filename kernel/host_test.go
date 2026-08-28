@@ -12,27 +12,27 @@ import (
 	"time"
 )
 
-func TestAC11_宿主默认监听地址(t *testing.T) {
+func TestAC11_HostDefaultListenAddresses(t *testing.T) {
 	t.Setenv("CORAGATE_LISTEN", "")
 	if got := LoadConfig(HostClient).Listen; got != DefaultListenClient {
-		t.Fatalf("client 默认监听 = %s，希望 %s", got, DefaultListenClient)
+		t.Fatalf("client default listen = %s, want %s", got, DefaultListenClient)
 	}
 	if got := LoadConfig(HostCluster).Listen; got != DefaultListenCluster {
-		t.Fatalf("cluster 默认监听 = %s，希望 %s", got, DefaultListenCluster)
+		t.Fatalf("cluster default listen = %s, want %s", got, DefaultListenCluster)
 	}
 }
 
-func TestAC11_CORAGATE_LISTEN覆盖宿主默认(t *testing.T) {
+func TestAC11_ListenEnvOverridesHostDefault(t *testing.T) {
 	t.Setenv("CORAGATE_LISTEN", "127.0.0.1:9999")
 	if got := LoadConfig(HostCluster).Listen; got != "127.0.0.1:9999" {
-		t.Fatalf("覆盖后 cluster 监听 = %s", got)
+		t.Fatalf("cluster listen after override = %s", got)
 	}
 	if got := LoadConfig(HostClient).Listen; got != "127.0.0.1:9999" {
-		t.Fatalf("覆盖后 client 监听 = %s", got)
+		t.Fatalf("client listen after override = %s", got)
 	}
 }
 
-func TestAC11_本机与集群地址都能完成流式请求(t *testing.T) {
+func TestAC11_ClientAndClusterBindsCompleteStream(t *testing.T) {
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		fl := w.(http.Flusher)
@@ -57,17 +57,17 @@ func TestAC11_本机与集群地址都能完成流式请求(t *testing.T) {
 			}
 			defer resp.Body.Close()
 			if resp.StatusCode != http.StatusOK {
-				t.Fatalf("状态码 = %d", resp.StatusCode)
+				t.Fatalf("status = %d", resp.StatusCode)
 			}
 			if resp.Header.Get(headerGatewayMark) != "1" {
-				t.Fatal("响应未经过网关")
+				t.Fatal("response did not pass through the gateway")
 			}
 			first, err := bufio.NewReader(resp.Body).ReadString('\n')
 			if err != nil {
 				t.Fatal(err)
 			}
 			if !strings.Contains(first, "host-ok") {
-				t.Fatalf("首包 = %q", first)
+				t.Fatalf("first chunk = %q", first)
 			}
 		})
 	}

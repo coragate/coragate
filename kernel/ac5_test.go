@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-// TestAC5_面板未启动仍代理与拦截 只起 Go Handler，不启动 Next 控制面。
-func TestAC5_面板未启动仍代理与拦截(t *testing.T) {
+// TestAC5_DataplaneWorksWithoutControlPlane runs only the Go Handler; Next is not started.
+func TestAC5_DataplaneWorksWithoutControlPlane(t *testing.T) {
 	var forwarded atomic.Bool
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		forwarded.Store(true)
@@ -33,13 +33,13 @@ func TestAC5_面板未启动仍代理与拦截(t *testing.T) {
 	okBody, _ := io.ReadAll(okResp.Body)
 	_ = okResp.Body.Close()
 	if !forwarded.Load() {
-		t.Fatal("未起面板时放行请求应打到上游")
+		t.Fatal("allowed request should reach upstream without the panel")
 	}
 	if okResp.StatusCode != http.StatusOK || !strings.Contains(string(okBody), "no-panel") {
-		t.Fatalf("放行失败 status=%d body=%s", okResp.StatusCode, okBody)
+		t.Fatalf("allow failed status=%d body=%s", okResp.StatusCode, okBody)
 	}
 	if okResp.Header.Get(headerGatewayMark) != "1" {
-		t.Fatal("响应应来自数据面")
+		t.Fatal("response should come from the dataplane")
 	}
 
 	forwarded.Store(false)
@@ -50,9 +50,9 @@ func TestAC5_面板未启动仍代理与拦截(t *testing.T) {
 	_, _ = io.ReadAll(blockResp.Body)
 	_ = blockResp.Body.Close()
 	if forwarded.Load() {
-		t.Fatal("未起面板时 enforce 命中仍打了上游")
+		t.Fatal("enforce hit still reached upstream without the panel")
 	}
 	if blockResp.StatusCode != http.StatusForbidden {
-		t.Fatalf("拦截状态码 = %d", blockResp.StatusCode)
+		t.Fatalf("block status = %d", blockResp.StatusCode)
 	}
 }

@@ -45,7 +45,7 @@ func sseDelta(content string) string {
 	return `data: {"choices":[{"delta":{"content":"` + content + `"}}]}` + "\n"
 }
 
-func TestAC3_转发过程中扫描且不等整段结束(t *testing.T) {
+func TestAC3_ScansDuringForwardWithoutWaitingForEnd(t *testing.T) {
 	spy := &outputSpy{}
 	proceed := make(chan struct{})
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -78,22 +78,22 @@ func TestAC3_转发过程中扫描且不等整段结束(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.Contains(first, "hel") {
-		t.Fatalf("首包 = %q", first)
+		t.Fatalf("first chunk = %q", first)
 	}
 	if spy.n.Load() < 1 {
-		t.Fatal("上游第二段尚未发送时未做输出扫描，说明在等整段结束")
+		t.Fatal("no output scan before the second upstream chunk; waiting for the full stream")
 	}
 	close(proceed)
 	rest, _ := io.ReadAll(rd)
 	if !strings.Contains(string(rest), "lo") {
-		t.Fatalf("未收到后续 chunk: %s", rest)
+		t.Fatalf("missing later chunk: %s", rest)
 	}
 	if spy.last() != "hello" {
-		t.Fatalf("窗口未跨 chunk 拼接: %q", spy.last())
+		t.Fatalf("window did not join across chunks: %q", spy.last())
 	}
 }
 
-func TestAC3_关键字跨SSE事件命中(t *testing.T) {
+func TestAC3_KeywordHitsAcrossSSEEvents(t *testing.T) {
 	spy := &outputSpy{}
 	combo := []Inspector{spy, outputOnly{needle: "secret", id: "out"}}
 
@@ -121,7 +121,7 @@ func TestAC3_关键字跨SSE事件命中(t *testing.T) {
 	defer resp.Body.Close()
 	_, _ = io.ReadAll(resp.Body)
 	if spy.last() != "secret" {
-		t.Fatalf("跨事件窗口 = %q", spy.last())
+		t.Fatalf("cross-event window = %q", spy.last())
 	}
 }
 
