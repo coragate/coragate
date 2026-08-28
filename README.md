@@ -22,15 +22,20 @@
 - **数据面（Go）**：热路径。`/v1/chat/completions` 只由 Go 写 SSE。面板没启动时数据面仍应能代理（T1 起）。
 - **控制面（Next.js App Router + shadcn/ui）**：规则 / 沙盒 / 看板。`controlplane/` 禁止做聊天流 BFF。
 
-当前 T0 仅脚手架：Go 宿主打印占位后退出；面板是空壳。代理从 T1 开始。
+当前数据面已代理 `POST /v1/chat/completions`（SSE 透传，检测插件见 T2）。控制面仍是空壳（T7）。
+
+需要配置上游（OpenAI 兼容 `baseURL`），例如官方 API 或本地 vLLM：
 
 ```bash
-# 集群宿主 stub
-go run ./hosts/cluster/cmd/coragate
-
-# 本机宿主 stub
+export CORAGATE_UPSTREAM_BASE_URL=https://api.openai.com
+# 本机宿主
 go run ./hosts/client/cmd/coragate
+
+# 集群宿主
+go run ./hosts/cluster/cmd/coragate
 
 # 控制面空壳（无规则/沙盒，那些是 T7）
 cd controlplane && pnpm dev
 ```
+
+客户端把 OpenAI SDK 的 `baseURL` 指到上表对应实例，例如 `http://127.0.0.1:8080/v1`。面板未启动时数据面仍可代理。
