@@ -1,10 +1,12 @@
-# Agent 指南
+# Agent guide
 
-本仓库是 [SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp) 的落点。架构真源在 **coragate-docs**，不要在本仓另写冲突故事。
+This repo implements [SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp). Architecture source of truth is **coragate-docs**—do not write a conflicting story here.
 
-## 硬约束
+Public docs are **English-primary** (ADR-0009). Chinese lives in `README.zh-CN.md`. While the repo is still private, code comments and test names may stay Chinese (ADR-0013); convert them at the OSS milestone.
 
-- `/v1/chat/completions` 只由 Go 数据面写 SSE。`controlplane/` 禁止 Route Handler / BFF 转发聊天流。
-- 数据面是舰队：`hosts/client`（默认 `127.0.0.1`）与 `hosts/cluster`（默认 `0.0.0.0`）。禁止把「全站唯一入口」写成默认拓扑。
-- 新行为先有 docs 仓 spec，再改代码。commit 引用 `SPEC-gateway-mvp#AC-n`。
-- 注释与单测描述用中文。控制面组件用 shadcn CLI，图标用 Lucide。
+## Hard constraints
+
+- Only the Go dataplane writes SSE for `/v1/chat/completions`. `controlplane/` must not Route-Handler / BFF the chat stream.
+- Dataplane is a fleet: `hosts/client` (default `127.0.0.1`) and `hosts/cluster` (default `0.0.0.0`). Do not document a site-wide single entry as the only topology.
+- New behavior needs a spec in the docs repo first. Commits cite `SPEC-gateway-mvp#AC-n`.
+- Install control-plane components with the shadcn CLI; icons are Lucide.

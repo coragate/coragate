@@ -83,13 +83,26 @@ func TestAC10_存在内置关键字插件包(t *testing.T) {
 
 func TestAC12_README同时给出本机与集群(t *testing.T) {
 	readme := readRepoFile(t, "README.md")
-	for _, want := range []string{"hosts/client", "hosts/cluster", "127.0.0.1", "0.0.0.0", "舰队"} {
+	for _, want := range []string{"hosts/client", "hosts/cluster", "127.0.0.1", "0.0.0.0", "fleet"} {
 		if !strings.Contains(readme, want) {
 			t.Fatalf("README 缺少 %q，不能只给一种拓扑", want)
 		}
 	}
-	if strings.Contains(readme, "唯一中心 URL") {
-		t.Fatal("README 不得把唯一中心 URL 写成拓扑")
+	for _, bad := range []string{"唯一中心 URL", "the only company-wide URL"} {
+		if strings.Contains(readme, bad) {
+			t.Fatalf("README 不得把 %q 写成拓扑", bad)
+		}
+	}
+}
+
+func TestADR0009_英文README配中文译本(t *testing.T) {
+	en := readRepoFile(t, "README.md")
+	zh := readRepoFile(t, "README.zh-CN.md")
+	if !strings.Contains(en, "README.zh-CN.md") {
+		t.Fatal("英文 README 应链到中文译本")
+	}
+	if !strings.Contains(zh, "舰队") {
+		t.Fatal("中文译本应保留舰队叙事")
 	}
 }
 

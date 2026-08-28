@@ -1,10 +1,11 @@
-## 摘要
+## Summary
 
-- Spec：`SPEC-` （无行为变更则写「豁免：…」）
-- AC：`AC-` （如适用）
+- Spec: `SPEC-` (or write `exempt: …` if no behavior change)
+- AC: `AC-` (if applicable)
 
-## 检查
+## Checks
 
-- [ ] 行为变更已有本组织 [coragate-docs](https://github.com/coragate/coragate-docs) spec，或声明豁免
-- [ ] 未在 Next 中转发 `/v1/chat/completions`
-- [ ] 文档未把数据面写成全站唯一入口
+- [ ] Behavior change has an org [coragate-docs](https://github.com/coragate/coragate-docs) spec, or an exemption
+- [ ] Next does not proxy `/v1/chat/completions`
+- [ ] Docs do not describe the dataplane as a site-wide single entry
+- [ ] User-facing docs: English is source; Chinese is a translation (`README.zh-CN.md`)

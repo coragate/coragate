@@ -1,6 +1,8 @@
-// Package kernel 是数据面微内核：监听抽象、OpenAI 兼容面、上游连接、SSE。
+// Package kernel is the dataplane microkernel: listen abstraction, OpenAI-compatible
+// surface, upstream client, and SSE.
 //
-// 同一内核由 hosts/cluster 与 hosts/client 绑定不同默认监听。
-// 热路径由插件做输入检测后再转发；沙盒走 POST /v1/inspect，不打上游。
-// 规则与配置快照带 schema_version；GET /health 与 --version 可查二进制版本。
+// The same kernel is bound by hosts/cluster and hosts/client with different default
+// listen addresses. The hot path runs inspect plugins, then forwards; the sandbox is
+// POST /v1/inspect and does not call upstream. Rule and config snapshots carry
+// schema_version. GET /health and --version report the binary version.
 package kernel
