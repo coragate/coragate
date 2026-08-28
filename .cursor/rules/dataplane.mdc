@@ -1,0 +1,21 @@
+---
+description: 数据面热路径与舰队拓扑，禁止 Next 聊天 BFF
+alwaysApply: true
+---
+
+# 实现仓约束
+
+规范真源：[SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp)。
+
+## Must
+
+- 聊天流只在 Go：`POST /v1/chat/completions` 不得进入 Next Route Handler / rewrite / BFF
+- 数据面按调用方扩（本机 / sidecar / 集群副本）；文档与示例须同时给出 `hosts/client` 与 `hosts/cluster`
+- 控制面只调数据面 `/v1/inspect`、`/v1/rules`、`/v1/audit`；不在 Next 重实现匹配
+- commit 引用 `SPEC-gateway-mvp#AC-n`；注释与单测描述用中文
+
+## Must Not
+
+- 不把本仓 README 写成与 docs 仓冲突的架构
+- 不把数据面规定为全站唯一中心 URL
+- 不把 SQLite 表结构焊进 `kernel/`
