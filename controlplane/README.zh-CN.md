@@ -6,6 +6,8 @@ Next.js App Router + Shark UI（Ark 注册表，图标 Lucide）。规则编辑�
 
 **禁止** Route Handler / BFF 转发 `/v1/chat/completions`（ADR-0002）。沙盒只调用数据面 `POST /v1/inspect`；规则走 `GET/PUT /v1/rules`；看板走 `GET /v1/audit`。
 
+**Locale 不进路径。** 面板地址仍是 `/`。偏好写在 cookie `coragate_locale`（`en` | `zh-CN`）；未设置时默认英文。规范：[SPEC-controlplane-i18n](https://github.com/coragate/coragate-docs/tree/main/docs/specs/controlplane-i18n)。
+
 ```bash
 # 先起数据面
 export CORAGATE_UPSTREAM_BASE_URL=https://api.openai.com
@@ -17,4 +19,4 @@ cd controlplane
 pnpm dev
 ```
 
-规范：[SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp) · [SPEC-pii-entities](https://github.com/coragate/coragate-docs/tree/main/docs/specs/pii-entities)
+规范：[SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp) · [SPEC-pii-entities](https://github.com/coragate/coragate-docs/tree/main/docs/specs/pii-entities) · [SPEC-controlplane-i18n](https://github.com/coragate/coragate-docs/tree/main/docs/specs/controlplane-i18n)

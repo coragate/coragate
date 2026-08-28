@@ -1,0 +1,87 @@
+{
+  "meta": {
+    "title": "CoraGate control plane",
+    "description": "Rules, sandbox, and hits. Does not proxy the chat stream."
+  },
+  "shell": {
+    "title": "CoraGate control plane",
+    "product": "CoraGate",
+    "workspace": "Control plane",
+    "navGroup": "Detection",
+    "hint": "Does not proxy the chat stream.",
+    "subtitle": "Rules / sandbox / hits. This process does not proxy <path>/v1/chat/completions</path>."
+  },
+  "locale": {
+    "label": "Language",
+    "en": "English",
+    "zhCN": "简体中文"
+  },
+  "dataplane": {
+    "title": "Dataplane",
+    "unreachable": "Dataplane unreachable ({error}). Start the Go dataplane and set DATAPLANE_BASE_URL."
+  },
+  "tabs": {
+    "rules": "Rules",
+    "sandbox": "Sandbox",
+    "hits": "Hits",
+    "settings": "Settings"
+  },
+  "rules": {
+    "title": "Rule snapshot",
+    "description": "Pick plugin, entity type, and block/redact; save to the dataplane. This page does not implement matching.",
+    "save": "Save to dataplane",
+    "ruleId": "Rule ID",
+    "plugin": "Plugin",
+    "action": "Action",
+    "entityType": "Entity type",
+    "pattern": "Pattern (regex)",
+    "remove": "Remove this rule",
+    "addPii": "Add PII rule"
+  },
+  "sandbox": {
+    "title": "Sandbox",
+    "description": "Text goes to the dataplane <endpoint>POST /v1/inspect</endpoint>; no upstream call, no regex in Next.",
+    "paste": "Paste text",
+    "run": "Inspect on dataplane",
+    "engineError": "Engine error",
+    "hit": "Hit {id}",
+    "miss": "No hit"
+  },
+  "hits": {
+    "title": "Hit list",
+    "description": "Read-only audit envelopes from the dataplane storage adapter, not a SQLite query.",
+    "empty": "No flushed audit records yet.",
+    "time": "Time",
+    "rule": "Rule",
+    "entity": "Entity",
+    "action": "Action",
+    "outcome": "Outcome",
+    "policy": "Policy",
+    "hash": "Hash"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Workspace preferences. This process does not proxy the chat stream.",
+    "language": "Language",
+    "languageHint": "Saved in a cookie. The URL path stays the same."
+  },
+  "user": {
+    "name": "Operator",
+    "email": "operator@localhost",
+    "initials": "OP",
+    "account": "Account",
+    "settings": "Settings",
+    "signOut": "Log out",
+    "placeholder": "Placeholder account — sign-in is not wired yet."
+  },
+  "actions": {
+    "parseError": "Rule JSON could not be parsed",
+    "saved": "Wrote rule snapshot to the dataplane",
+    "saveFailed": "Save failed",
+    "needText": "Paste text to inspect",
+    "engineDown": "Detection engine unavailable",
+    "inspected": "Called dataplane inspect",
+    "inspectFailed": "Inspect failed",
+    "unknownError": "Unknown error"
+  }
+}

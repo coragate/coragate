@@ -6,13 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ark-ui/react": "^5.39.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.35.0",
     "next": "16.3.3",
+    "next-intl": "^4.14.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "shadcn": "^4.19.0",
@@ -28,7 +30,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   },
   "packageManager": "pnpm@8.15.6"
 }

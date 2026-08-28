@@ -10,6 +10,9 @@ Chinese notes for historical T0–T10 work remain in git history; new changelog 
 
 ## Unreleased
 
+- Control plane: English/zh-CN UI via cookie `coragate_locale` (no locale in the URL path) (SPEC-controlplane-i18n).
+- Control plane: placeholder operator in the sidebar footer; language lives on Settings (`/?view=settings`).
+
 - Breaking: detection plugins return all matches (`InspectResult.Matches`); the host merges every plugin instead of stopping at the first hit (SPEC-pii-entities).
 - Built-in `pii` detector (email, CN phone, CN id card, bank card); default action is redact. Input enforce+redact rebuilds `messages[].content` JSON; prompt hash still uses the original body.
 - Streaming output redact holds back up to 254 runes and rewrites complete `data:` lines so entity plaintext is not flushed (SPEC-pii-entities AC-4).

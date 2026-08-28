@@ -6,6 +6,8 @@ Chinese: [README.zh-CN.md](README.zh-CN.md).
 
 **Do not** BFF `/v1/chat/completions` from a Route Handler (ADR-0002). Sandbox calls dataplane `POST /v1/inspect` only; rules use `GET/PUT /v1/rules`; the board uses `GET /v1/audit`.
 
+Locale is **not** in the path. The panel stays at `/`. Preference is the `coragate_locale` cookie (`en` | `zh-CN`); default is English when unset. Spec: [SPEC-controlplane-i18n](https://github.com/coragate/coragate-docs/tree/main/docs/specs/controlplane-i18n).
+
 ```bash
 # dataplane first
 export CORAGATE_UPSTREAM_BASE_URL=https://api.openai.com
@@ -17,4 +19,4 @@ cd controlplane
 pnpm dev
 ```
 
-Spec: [SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp) · [SPEC-pii-entities](https://github.com/coragate/coragate-docs/tree/main/docs/specs/pii-entities)
+Spec: [SPEC-gateway-mvp](https://github.com/coragate/coragate-docs/tree/main/docs/specs/gateway-mvp) · [SPEC-pii-entities](https://github.com/coragate/coragate-docs/tree/main/docs/specs/pii-entities) · [SPEC-controlplane-i18n](https://github.com/coragate/coragate-docs/tree/main/docs/specs/controlplane-i18n)

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,7 @@ export function RulesEditor({
   initial: RuleRow[];
   schemaVersion: number;
 }) {
+  const t = useTranslations("rules");
   const [rows, setRows] = useState<DraftRule[]>(() =>
     initial.length ? initial.map(fromRow) : [emptyKeyword()]
   );
@@ -97,7 +99,7 @@ export function RulesEditor({
           className="flex flex-col gap-3 rounded-xl border p-3"
         >
           <Field>
-            <FieldLabel>规则 ID</FieldLabel>
+            <FieldLabel>{t("ruleId")}</FieldLabel>
             <Input
               type="text"
               value={row.id}
@@ -106,7 +108,7 @@ export function RulesEditor({
           </Field>
           <div className="flex flex-wrap gap-3">
             <Field>
-              <FieldLabel>插件</FieldLabel>
+              <FieldLabel>{t("plugin")}</FieldLabel>
               <NativeSelect
                 value={row.plugin}
                 onChange={(e) => {
@@ -122,7 +124,7 @@ export function RulesEditor({
               </NativeSelect>
             </Field>
             <Field>
-              <FieldLabel>动作</FieldLabel>
+              <FieldLabel>{t("action")}</FieldLabel>
               <NativeSelect
                 value={row.action}
                 onChange={(e) =>
@@ -137,21 +139,21 @@ export function RulesEditor({
             </Field>
             {row.plugin === "pii" ? (
               <Field>
-                <FieldLabel>实体类型</FieldLabel>
+                <FieldLabel>{t("entityType")}</FieldLabel>
                 <NativeSelect
                   value={row.type}
                   onChange={(e) => update(i, { type: e.target.value })}
                 >
-                  {PII_TYPES.map((t) => (
-                    <NativeSelectOption key={t} value={t}>
-                      {t}
+                  {PII_TYPES.map((typ) => (
+                    <NativeSelectOption key={typ} value={typ}>
+                      {typ}
                     </NativeSelectOption>
                   ))}
                 </NativeSelect>
               </Field>
             ) : (
               <Field className="min-w-48 flex-1">
-                <FieldLabel>模式（正则）</FieldLabel>
+                <FieldLabel>{t("pattern")}</FieldLabel>
                 <Input
                   type="text"
                   value={row.pattern}
@@ -168,7 +170,7 @@ export function RulesEditor({
             onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}
             disabled={rows.length <= 1}
           >
-            删除此条
+            {t("remove")}
           </Button>
         </div>
       ))}
@@ -188,7 +190,7 @@ export function RulesEditor({
           ])
         }
       >
-        添加 PII 规则
+        {t("addPii")}
       </Button>
     </FieldGroup>
   );

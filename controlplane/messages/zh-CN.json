@@ -1,0 +1,87 @@
+{
+  "meta": {
+    "title": "CoraGate 控制面",
+    "description": "规则 / 沙盒 / 看板。不转发聊天流。"
+  },
+  "shell": {
+    "title": "CoraGate 控制面",
+    "product": "CoraGate",
+    "workspace": "控制面",
+    "navGroup": "检测",
+    "hint": "不转发聊天流。",
+    "subtitle": "规则 / 沙盒 / 看板。本进程不转发 <path>/v1/chat/completions</path>。"
+  },
+  "locale": {
+    "label": "语言",
+    "en": "English",
+    "zhCN": "简体中文"
+  },
+  "dataplane": {
+    "title": "数据面",
+    "unreachable": "数据面不可达（{error}）。请先启动 Go 数据面，并设置 DATAPLANE_BASE_URL。"
+  },
+  "tabs": {
+    "rules": "规则",
+    "sandbox": "沙盒",
+    "hits": "命中",
+    "settings": "设置"
+  },
+  "rules": {
+    "title": "规则快照",
+    "description": "选择插件、实体类型与 block/redact；保存到数据面。本页不实现匹配。",
+    "save": "保存到数据面",
+    "ruleId": "规则 ID",
+    "plugin": "插件",
+    "action": "动作",
+    "entityType": "实体类型",
+    "pattern": "模式（正则）",
+    "remove": "删除此条",
+    "addPii": "添加 PII 规则"
+  },
+  "sandbox": {
+    "title": "沙盒",
+    "description": "文本交给数据面 <endpoint>POST /v1/inspect</endpoint>，不打上游、不在 Next 里做正则。",
+    "paste": "粘贴文本",
+    "run": "调用数据面检测",
+    "engineError": "引擎错误",
+    "hit": "命中 {id}",
+    "miss": "未命中"
+  },
+  "hits": {
+    "title": "命中列表",
+    "description": "只读展示数据面审计 envelope（经存储接口），不是 SQLite 直查。",
+    "empty": "暂无已 flush 的审计记录。",
+    "time": "时间",
+    "rule": "规则",
+    "entity": "实体",
+    "action": "动作",
+    "outcome": "结果",
+    "policy": "策略",
+    "hash": "哈希"
+  },
+  "settings": {
+    "title": "设置",
+    "description": "工作区偏好。本进程不转发聊天流。",
+    "language": "语言",
+    "languageHint": "保存在 cookie 里。地址栏路径不变。"
+  },
+  "user": {
+    "name": "操作员",
+    "email": "operator@localhost",
+    "initials": "OP",
+    "account": "账户",
+    "settings": "设置",
+    "signOut": "退出",
+    "placeholder": "占位账户，登录尚未接入。"
+  },
+  "actions": {
+    "parseError": "规则 JSON 无法解析",
+    "saved": "已写入数据面规则快照",
+    "saveFailed": "保存失败",
+    "needText": "请粘贴要检测的文本",
+    "engineDown": "检测引擎不可用",
+    "inspected": "已调用数据面检测端点",
+    "inspectFailed": "检测失败",
+    "unknownError": "未知错误"
+  }
+}
