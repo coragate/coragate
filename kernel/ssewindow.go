@@ -8,6 +8,9 @@ import (
 
 const defaultWindowBytes = 4096
 
+// OutputHoldbackRunes is the max first-batch entity length (email path, RFC 5321).
+const OutputHoldbackRunes = 254
+
 // sseWindow buffers text extracted from complete SSE lines. It does not parse partial JSON (ADR-0003).
 type sseWindow struct {
 	partial []byte
@@ -90,4 +93,53 @@ func extractStreamText(payload []byte) string {
 		b.WriteString(c.Delta.Content)
 	}
 	return b.String()
+}
+
+func splitHoldback(s string, hold int) (prefix string) {
+	if hold <= 0 {
+		return s
+	}
+	rs := []rune(s)
+	if len(rs) <= hold {
+		return ""
+	}
+	return string(rs[:len(rs)-hold])
+}
+
+func clipRedactToPrefix(r InspectResult, prefixLen int) InspectResult {
+	out := r
+	out.Matches = nil
+	for _, m := range r.Matches {
+		var sp []Span
+		for _, s := range m.Spans {
+			if s.Start >= 0 && s.End <= prefixLen && s.Start < s.End {
+				sp = append(sp, s)
+			}
+		}
+		if len(sp) == 0 {
+			continue
+		}
+		m.Spans = sp
+		out.Matches = append(out.Matches, m)
+	}
+	if len(out.Matches) == 0 {
+		out.Hit = false
+		out.RuleID = ""
+	} else {
+		out.Hit = true
+		out.RuleID = primaryRuleID(out)
+	}
+	return out
+}
+
+func sseDataLine(content string) ([]byte, error) {
+	payload, err := json.Marshal(map[string]any{
+		"choices": []map[string]any{
+			{"delta": map[string]string{"content": content}},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return append(append([]byte("data: "), payload...), '\n'), nil
 }

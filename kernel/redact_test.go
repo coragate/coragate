@@ -39,6 +39,8 @@ func (s stubRedact) InspectOutputWindow(ctx context.Context, window string) Insp
 	return s.InspectInput(ctx, window)
 }
 
+func (s stubRedact) OutputRedacts() bool { return true }
+
 func TestAC3_EnforceRedactForwardsPlaceholder(t *testing.T) {
 	var upBody atomic.Value
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -142,5 +144,100 @@ func TestAC7_HashUsesOriginalBody(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("missing audit")
+	}
+}
+
+func TestAC4_OutputRedactHoldbackNoPlaintext(t *testing.T) {
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		fl := w.(http.Flusher)
+		_, _ = io.WriteString(w, sseDelta("alice@"))
+		fl.Flush()
+		_, _ = io.WriteString(w, sseDelta("example.com"))
+		fl.Flush()
+		_, _ = io.WriteString(w, "data: [DONE]\n")
+		fl.Flush()
+	}))
+	t.Cleanup(up.Close)
+
+	gw := httptest.NewServer(Handler(Config{
+		UpstreamBaseURL: up.URL,
+		PolicyMode:      PolicyEnforce,
+		Inspectors:      []Inspector{stubRedact{needle: "alice@example.com", id: "pii-email", typ: "email"}},
+	}))
+	t.Cleanup(gw.Close)
+
+	resp, err := http.Post(gw.URL+"/v1/chat/completions", "application/json", strings.NewReader(`{"model":"fake","stream":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	got, _ := io.ReadAll(resp.Body)
+	body := string(got)
+	if strings.Contains(body, "alice@example.com") || strings.Contains(body, "alice@") {
+		t.Fatalf("client saw plaintext: %s", body)
+	}
+	if !strings.Contains(body, "[REDACTED:email]") {
+		t.Fatalf("missing placeholder: %s", body)
+	}
+}
+
+func TestAC4_ObserveOutputKeepsPlaintext(t *testing.T) {
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, sseDelta("alice@example.com"))
+	}))
+	t.Cleanup(up.Close)
+
+	gw := httptest.NewServer(Handler(Config{
+		UpstreamBaseURL: up.URL,
+		PolicyMode:      PolicyObserve,
+		Inspectors:      []Inspector{stubRedact{needle: "alice@example.com", id: "pii-email", typ: "email"}},
+	}))
+	t.Cleanup(gw.Close)
+
+	resp, err := http.Post(gw.URL+"/v1/chat/completions", "application/json", strings.NewReader(`{"model":"fake","stream":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	got, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(got), "alice@example.com") {
+		t.Fatalf("observe must not rewrite output: %s", got)
+	}
+}
+
+func TestAC11_OutputBlockStopsLaterChunks(t *testing.T) {
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		fl := w.(http.Flusher)
+		_, _ = io.WriteString(w, sseDelta("hello"))
+		fl.Flush()
+		_, _ = io.WriteString(w, sseDelta("secret"))
+		fl.Flush()
+		_, _ = io.WriteString(w, sseDelta("tail"))
+		fl.Flush()
+	}))
+	t.Cleanup(up.Close)
+
+	gw := httptest.NewServer(Handler(Config{
+		UpstreamBaseURL: up.URL,
+		PolicyMode:      PolicyEnforce,
+		Inspectors:      []Inspector{outputOnly{needle: "secret", id: "out-block"}},
+	}))
+	t.Cleanup(gw.Close)
+
+	resp, err := http.Post(gw.URL+"/v1/chat/completions", "application/json", strings.NewReader(`{"model":"fake","stream":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	got, _ := io.ReadAll(resp.Body)
+	body := string(got)
+	if !strings.Contains(body, "hello") {
+		t.Fatalf("prefix should stay flushed: %s", body)
+	}
+	if strings.Contains(body, "tail") {
+		t.Fatalf("must stop later chunks: %s", body)
 	}
 }

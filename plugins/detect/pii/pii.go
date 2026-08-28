@@ -56,6 +56,11 @@ func New(rule Rule) (*Plugin, error) {
 
 func (p *Plugin) Name() string { return kernel.PluginPII }
 
+// OutputRedacts reports whether this rule rewrites streaming output (hold-back path).
+func (p *Plugin) OutputRedacts() bool {
+	return p != nil && p.action == kernel.ActionRedact
+}
+
 func (p *Plugin) InspectInput(_ context.Context, text string) kernel.InspectResult {
 	return p.match(text)
 }

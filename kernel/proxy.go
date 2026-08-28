@@ -132,7 +132,11 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(headerHitRule, inputHit.RuleID)
 	}
 	w.WriteHeader(resp.StatusCode)
-	outputHit, _ = copyFlushScan(r.Context(), w, resp.Body, cfg, inspectors)
+	if cfg.policyMode() == PolicyEnforce && NeedsOutputHoldback(inspectors) {
+		outputHit, _ = copyHoldbackRedact(r.Context(), w, resp.Body, cfg, inspectors)
+	} else {
+		outputHit, _ = copyFlushScan(r.Context(), w, resp.Body, cfg, inspectors)
+	}
 	if outputHit.EngineError != "" {
 		if cfg.failClosed() {
 			outcome = OutcomeFailClosed
@@ -194,24 +198,34 @@ func copyResponseHeaders(dst, src http.Header) {
 	}
 }
 
-// copyFlushScan forwards while scanning: raw chunks Flush immediately; complete data: lines enter the sliding window and plugins.
+// copyFlushScan forwards complete SSE lines then scans. Used for block / observe (AC-11: stop later lines; do not recall flushed prefix).
 func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, cfg Config, inspectors []Inspector) (InspectResult, error) {
 	var last InspectResult
 	flusher, _ := dst.(http.Flusher)
 	win := newSSEWindow(defaultWindowBytes)
+	var pending []byte
 	buf := make([]byte, 4096)
 	for {
 		n, err := src.Read(buf)
 		if n > 0 {
-			chunk := buf[:n]
-			if _, werr := dst.Write(chunk); werr != nil {
-				return last, werr
-			}
-			if flusher != nil {
-				flusher.Flush()
-			}
-			if len(inspectors) > 0 {
-				for _, snap := range win.Feed(chunk) {
+			pending = append(pending, buf[:n]...)
+			for {
+				i := bytes.IndexByte(pending, '\n')
+				if i < 0 {
+					break
+				}
+				line := pending[:i+1]
+				pending = pending[i+1:]
+				if _, werr := dst.Write(line); werr != nil {
+					return last, werr
+				}
+				if flusher != nil {
+					flusher.Flush()
+				}
+				if len(inspectors) == 0 {
+					continue
+				}
+				for _, snap := range win.Feed(line) {
 					hit := InspectOutputWindow(ctx, inspectors, snap)
 					if hit.EngineError != "" {
 						last = hit
@@ -232,6 +246,9 @@ func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, 
 			}
 		}
 		if err == io.EOF {
+			if len(pending) > 0 {
+				_, _ = dst.Write(pending)
+			}
 			return last, nil
 		}
 		if err != nil {
@@ -239,3 +256,135 @@ func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, 
 		}
 	}
 }
+
+func writeAndFlush(dst http.ResponseWriter, flusher http.Flusher, p []byte) error {
+	if len(p) == 0 {
+		return nil
+	}
+	if _, err := dst.Write(p); err != nil {
+		return err
+	}
+	if flusher != nil {
+		flusher.Flush()
+	}
+	return nil
+}
+
+func emitRedactedDelta(dst http.ResponseWriter, flusher http.Flusher, content string) error {
+	if content == "" {
+		return nil
+	}
+	line, err := sseDataLine(content)
+	if err != nil {
+		return err
+	}
+	return writeAndFlush(dst, flusher, line)
+}
+
+// copyHoldbackRedact buffers complete SSE lines, holds back up to OutputHoldbackRunes of extracted
+// text, and forwards redacted delta.content so fixture plaintext never enters flushed bytes (AC-4).
+func copyHoldbackRedact(ctx context.Context, dst http.ResponseWriter, src io.Reader, cfg Config, inspectors []Inspector) (InspectResult, error) {
+	var last InspectResult
+	flusher, _ := dst.(http.Flusher)
+	var pending []byte
+	var extracted strings.Builder
+	emitted := ""
+	buf := make([]byte, 4096)
+
+	release := func(eof bool) error {
+		hold := OutputHoldbackRunes
+		if eof {
+			hold = 0
+		}
+		all := extracted.String()
+		hit := InspectOutputWindow(ctx, inspectors, all)
+		if hit.EngineError != "" {
+			last = hit
+			if cfg.failClosed() {
+				return io.EOF
+			}
+			return nil
+		}
+		if hit.Blocks() {
+			last = hit
+			return errOutputBlocked
+		}
+		if hit.Hit {
+			last = hit
+		}
+		prefix := splitHoldback(all, hold)
+		red := ApplyRedact(prefix, clipRedactToPrefix(hit, len(prefix)))
+		if !strings.HasPrefix(red, emitted) {
+			if emitted == "" {
+				if err := emitRedactedDelta(dst, flusher, red); err != nil {
+					return err
+				}
+				emitted = red
+			}
+			return nil
+		}
+		extra := red[len(emitted):]
+		if extra == "" {
+			return nil
+		}
+		if err := emitRedactedDelta(dst, flusher, extra); err != nil {
+			return err
+		}
+		emitted = red
+		return nil
+	}
+
+	handleLine := func(line []byte) error {
+		if bytes.HasPrefix(line, []byte("data:")) {
+			rest := bytes.TrimSpace(bytes.TrimPrefix(line, []byte("data:")))
+			if bytes.Equal(rest, []byte("[DONE]")) {
+				if err := release(true); err != nil {
+					return err
+				}
+				return writeAndFlush(dst, flusher, append(append([]byte{}, line...), '\n'))
+			}
+		}
+		payload, ok := sseDataPayload(line)
+		if !ok {
+			return writeAndFlush(dst, flusher, append(append([]byte{}, line...), '\n'))
+		}
+		piece := extractStreamText(payload)
+		if piece == "" {
+			return writeAndFlush(dst, flusher, append(append([]byte{}, line...), '\n'))
+		}
+		extracted.WriteString(piece)
+		return release(false)
+	}
+
+	for {
+		n, err := src.Read(buf)
+		if n > 0 {
+			pending = append(pending, buf[:n]...)
+			for {
+				i := bytes.IndexByte(pending, '\n')
+				if i < 0 {
+					break
+				}
+				line := bytes.TrimSuffix(pending[:i], []byte{'\r'})
+				pending = pending[i+1:]
+				if herr := handleLine(line); herr != nil {
+					if herr == errOutputBlocked {
+						return last, nil
+					}
+					return last, herr
+				}
+			}
+		}
+		if err == io.EOF {
+			if rel := release(true); rel != nil && rel != errOutputBlocked {
+				return last, rel
+			}
+			return last, nil
+		}
+		if err != nil {
+			return last, err
+		}
+	}
+}
+
+var errOutputBlocked = fmt.Errorf("coragate: output blocked")

@@ -251,6 +251,20 @@ func InspectOutputWindow(ctx context.Context, inspectors []Inspector, window str
 	return out
 }
 
+type outputRedactor interface {
+	OutputRedacts() bool
+}
+
+// NeedsOutputHoldback is true when an inspector may redact streaming output.
+func NeedsOutputHoldback(inspectors []Inspector) bool {
+	for _, p := range inspectors {
+		if r, ok := p.(outputRedactor); ok && r.OutputRedacts() {
+			return true
+		}
+	}
+	return false
+}
+
 func safeInspect(fn func() InspectResult) (out InspectResult) {
 	defer func() {
 		if rec := recover(); rec != nil {

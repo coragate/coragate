@@ -1,6 +1,9 @@
 package kernel
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestSSEWindowJoinsHitTextAcrossChunks(t *testing.T) {
 	w := newSSEWindow(4096)
@@ -16,6 +19,16 @@ func TestSSEWindowJoinsHitTextAcrossChunks(t *testing.T) {
 	}
 	if snaps := w.Feed([]byte("t\"}}]}\n")); len(snaps) != 1 || snaps[0] != "secret" {
 		t.Fatalf("joined window = %v text=%q", snaps, w.Text())
+	}
+}
+
+func TestSplitHoldback(t *testing.T) {
+	if p := splitHoldback("ab", 254); p != "" {
+		t.Fatalf("short string prefix=%q", p)
+	}
+	long := strings.Repeat("x", 300)
+	if n := len([]rune(splitHoldback(long, 254))); n != 46 {
+		t.Fatalf("prefix runes=%d", n)
 	}
 }
 
