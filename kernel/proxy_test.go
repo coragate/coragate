@@ -66,6 +66,9 @@ func TestAC2_请求打到上游且响应来自网关(t *testing.T) {
 	var hit atomic.Bool
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hit.Store(true)
+		if r.ContentLength <= 0 {
+			t.Errorf("上游 Content-Length=%d，非 Go 服务器会读到空 body", r.ContentLength)
+		}
 		body, _ := io.ReadAll(r.Body)
 		if !strings.Contains(string(body), `"model":"fake"`) {
 			t.Errorf("上游未收到客户端 body: %s", body)

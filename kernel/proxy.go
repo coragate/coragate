@@ -55,6 +55,7 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	copyRequestHeaders(ureq.Header, r.Header)
+	ureq.ContentLength = r.ContentLength
 	ureq.Header.Set("Accept", "text/event-stream, application/json")
 
 	resp, err := cfg.client().Do(ureq)
@@ -98,8 +99,7 @@ func copyRequestHeaders(dst, src http.Header) {
 		if hopByHop[http.CanonicalHeaderKey(k)] {
 			continue
 		}
-		switch http.CanonicalHeaderKey(k) {
-		case "Host", "Content-Length":
+		if http.CanonicalHeaderKey(k) == "Host" {
 			continue
 		}
 		for _, v := range vs {
