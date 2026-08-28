@@ -23,4 +23,4 @@ Use `.github/PULL_REQUEST_TEMPLATE.md`. Link the spec (or state an exemption).
 
 ## License
 
-The license is still unchosen ([ADR-0003](https://github.com/coragate/coragate-docs/blob/main/docs/adrs/0003-mvp-scope-cuts.md)). It will be published in the same milestone as making this repository public.
+[Apache License 2.0](LICENSE) ([ADR-0014](https://github.com/coragate/coragate-docs/blob/main/docs/adrs/0014-apache-2-license.md)). Contributions are under the same terms unless a separate agreement says otherwise.

@@ -76,3 +76,7 @@ cd controlplane && pnpm dev
 ```
 
 客户端把 OpenAI SDK 的 `baseURL` 指到上表对应实例，例如 `http://127.0.0.1:8080/v1`。面板未启动时数据面仍可代理。
+
+## 许可证
+
+[Apache License 2.0](LICENSE)。见 [NOTICE](NOTICE)。

@@ -23,4 +23,4 @@
 
 ## 许可证
 
-许可证尚未选定（[ADR-0003](https://github.com/coragate/coragate-docs/blob/main/docs/adrs/0003-mvp-scope-cuts.md)）。与仓库公开同一里程碑发布。
+[Apache License 2.0](LICENSE)（[ADR-0014](https://github.com/coragate/coragate-docs/blob/main/docs/adrs/0014-apache-2-license.md)）。对本仓的贡献默认按同一许可证授权，除非另有书面协议。

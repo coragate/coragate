@@ -76,3 +76,7 @@ cd controlplane && pnpm dev
 ```
 
 Point the OpenAI SDK `baseURL` at the instance in the table, e.g. `http://127.0.0.1:8080/v1`. The dataplane still proxies if the panel is not running.
+
+## License
+
+[Apache License 2.0](LICENSE). See [NOTICE](NOTICE).

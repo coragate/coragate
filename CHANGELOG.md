@@ -10,6 +10,7 @@ Chinese notes for historical T0–T10 work remain in git history; new changelog 
 
 ## Unreleased
 
+- Apache License 2.0 (`LICENSE` / `NOTICE`) (ADR-0014).
 - Public docs: English README as source, Chinese in `README.zh-CN.md` (ADR-0009).
 - CONTRIBUTING / SECURITY; README states self-host is first-class (ADR-0010).
 - T10: AGENTS.md and dataplane rule: no Next chat BFF, no funnel narrative.
