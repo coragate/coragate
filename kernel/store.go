@@ -18,6 +18,9 @@ type Envelope struct {
 	PolicyMode    string `json:"policy_mode"`
 	Outcome       string `json:"outcome,omitempty"`
 	EngineError   string `json:"engine_error,omitempty"`
+	EntityType    string `json:"entity_type,omitempty"`
+	RuleAction    string `json:"rule_action,omitempty"`
+	Intervention  string `json:"intervention,omitempty"`
 }
 
 // Store is the storage adapter. The kernel only knows this interface; the default impl may be a file or SQLite.

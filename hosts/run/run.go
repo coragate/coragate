@@ -9,6 +9,7 @@ import (
 
 	"github.com/coragate/coragate/kernel"
 	"github.com/coragate/coragate/plugins/detect/keyword"
+	"github.com/coragate/coragate/plugins/detect/pii"
 	"github.com/coragate/coragate/plugins/storage/file"
 )
 
@@ -68,8 +69,22 @@ func compileSnapshot(snap kernel.RuleSnapshot) ([]kernel.Inspector, error) {
 			plugin = "keyword"
 		}
 		switch plugin {
-		case "keyword":
-			p, err := keyword.New(keyword.Rule{ID: r.ID, Pattern: r.Pattern})
+		case kernel.PluginKeyword:
+			p, err := keyword.New(keyword.Rule{
+				ID:      r.ID,
+				Pattern: r.Pattern,
+				Action:  kernel.ResolveAction(plugin, r.Action),
+			})
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, p)
+		case kernel.PluginPII:
+			p, err := pii.New(pii.Rule{
+				ID:     r.ID,
+				Type:   r.Type,
+				Action: kernel.ResolveAction(plugin, r.Action),
+			})
 			if err != nil {
 				return nil, err
 			}

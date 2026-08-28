@@ -28,6 +28,24 @@ func TestCompileKeywordPluginFromSnapshot(t *testing.T) {
 	}
 }
 
+func TestCompilePIIPluginDefaultRedact(t *testing.T) {
+	ins, err := compileSnapshot(kernel.RuleSnapshot{
+		SchemaVersion: kernel.RulesSchemaVersion,
+		Rules: []kernel.SnapshotRule{{
+			ID:     "pii-email",
+			Plugin: "pii",
+			Type:   "email",
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hit := ins[0].InspectInput(context.Background(), "alice@example.com")
+	if !hit.Hit || kernel.MatchAction(hit.Matches[0]) != kernel.ActionRedact {
+		t.Fatalf("result = %+v", hit)
+	}
+}
+
 func TestUnknownPluginRejected(t *testing.T) {
 	_, err := compileSnapshot(kernel.RuleSnapshot{
 		SchemaVersion: kernel.RulesSchemaVersion,

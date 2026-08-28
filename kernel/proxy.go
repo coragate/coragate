@@ -70,14 +70,16 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 	_ = r.Body.Close()
 
 	started := time.Now()
+	rawBody := body
 	var inputHit, outputHit InspectResult
 	outcome := OutcomeForwarded
 	defer func() {
-		cfg.enqueueAudit(body, started, inputHit, outputHit, outcome)
+		cfg.enqueueAudit(rawBody, started, inputHit, outputHit, outcome)
 	}()
 
 	inspectors := cfg.inspectors()
-	inputHit = InspectInput(r.Context(), inspectors, ExtractChatText(body))
+	enforce := cfg.policyMode() == PolicyEnforce
+	inputHit, body = InspectAndRewriteChat(r.Context(), inspectors, rawBody, enforce)
 	if inputHit.EngineError != "" {
 		if cfg.failClosed() {
 			outcome = OutcomeFailClosed
@@ -85,12 +87,15 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		outcome = OutcomeFailOpen
+	} else if inputHit.Blocks() && enforce {
+		w.Header().Set(headerHitRule, inputHit.RuleID)
+		outcome = OutcomeBlocked
+		writeBlocked(w, inputHit.RuleID)
+		return
 	} else if inputHit.Hit {
 		w.Header().Set(headerHitRule, inputHit.RuleID)
-		if cfg.policyMode() == PolicyEnforce {
-			outcome = OutcomeBlocked
-			writeBlocked(w, inputHit.RuleID)
-			return
+		if inputHit.Redacts() && enforce {
+			outcome = OutcomeRedacted
 		}
 	}
 
@@ -134,8 +139,10 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 		} else {
 			outcome = OutcomeFailOpen
 		}
-	} else if outputHit.Hit && cfg.policyMode() == PolicyEnforce {
+	} else if outputHit.Blocks() && cfg.policyMode() == PolicyEnforce {
 		outcome = OutcomeBlocked
+	} else if outputHit.Redacts() && cfg.policyMode() == PolicyEnforce && outcome == OutcomeForwarded {
+		outcome = OutcomeRedacted
 	}
 }
 
@@ -213,11 +220,13 @@ func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, 
 						}
 						continue
 					}
-					if hit.Hit {
+					if hit.Blocks() {
 						last = hit
 						if cfg.policyMode() == PolicyEnforce {
 							return last, nil
 						}
+					} else if hit.Hit {
+						last = hit
 					}
 				}
 			}

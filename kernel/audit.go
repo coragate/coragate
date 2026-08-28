@@ -26,6 +26,24 @@ func (c Config) enqueueAudit(body []byte, started time.Time, input, output Inspe
 	if output.EngineError != "" {
 		engineErr = output.EngineError
 	}
+	hit := input
+	if output.Hit || output.EngineError != "" {
+		hit = output
+		if output.Hit {
+			rule = output.RuleID
+		}
+	}
+	m := primaryMatch(hit)
+	ruleAction := ""
+	intervention := InterventionNone
+	if hit.Hit {
+		ruleAction = MatchAction(m)
+		if c.policyMode() == PolicyObserve {
+			intervention = InterventionAuditOnly
+		} else {
+			intervention = InterventionApplied
+		}
+	}
 	c.Auditor.Enqueue(Envelope{
 		SchemaVersion: EnvelopeSchemaVersion,
 		Time:          started.UTC().Format(time.RFC3339Nano),
@@ -35,5 +53,8 @@ func (c Config) enqueueAudit(body []byte, started time.Time, input, output Inspe
 		PolicyMode:    c.policyMode(),
 		Outcome:       outcome,
 		EngineError:   engineErr,
+		EntityType:    m.EntityType,
+		RuleAction:    ruleAction,
+		Intervention:  intervention,
 	})
 }

@@ -50,6 +50,13 @@ func TestParseSnapshot_RequiresSchemaVersion(t *testing.T) {
 	if snap.SchemaVersion != 1 || snap.Rules == nil {
 		t.Fatalf("snapshot = %+v", snap)
 	}
+	snap, err = ParseSnapshot([]byte(`{"schema_version":1,"rules":[{"id":"pii-email","plugin":"pii","type":"email"}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap.Rules[0].Type != "email" || snap.Rules[0].Action != "" {
+		t.Fatalf("optional type/action: %+v", snap.Rules[0])
+	}
 }
 
 func TestAC8_ReloadAppliesNewRulesToNewRequests(t *testing.T) {

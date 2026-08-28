@@ -19,7 +19,9 @@ const RulesSchemaVersion = 1
 type SnapshotRule struct {
 	ID      string `json:"id"`
 	Plugin  string `json:"plugin,omitempty"`
-	Pattern string `json:"pattern"`
+	Pattern string `json:"pattern,omitempty"`
+	Type    string `json:"type,omitempty"`
+	Action  string `json:"action,omitempty"`
 }
 
 // RuleSnapshot is persistable rule config (AC-8 / AC-13). The file is a carrier, not a SQLite table.

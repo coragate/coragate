@@ -5,6 +5,11 @@
       "id": "demo-keyword",
       "plugin": "keyword",
       "pattern": "(?i)coragate-block-me"
+    },
+    {
+      "id": "pii-email",
+      "plugin": "pii",
+      "type": "email"
     }
   ]
 }

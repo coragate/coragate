@@ -40,6 +40,8 @@ type inspectResponse struct {
 	Hit         bool   `json:"hit"`
 	RuleID      string `json:"rule_id,omitempty"`
 	EngineError string `json:"engine_error,omitempty"`
+	EntityType  string `json:"entity_type,omitempty"`
+	Action      string `json:"action,omitempty"`
 }
 
 func handleInspect(cfg Config, w http.ResponseWriter, r *http.Request) {
@@ -67,5 +69,15 @@ func handleInspect(cfg Config, w http.ResponseWriter, r *http.Request) {
 	if hit.Hit {
 		w.Header().Set(headerHitRule, hit.RuleID)
 	}
-	_ = json.NewEncoder(w).Encode(inspectResponse{Hit: hit.Hit, RuleID: hit.RuleID})
+	m := primaryMatch(hit)
+	action := ""
+	if hit.Hit {
+		action = MatchAction(m)
+	}
+	_ = json.NewEncoder(w).Encode(inspectResponse{
+		Hit:        hit.Hit,
+		RuleID:     hit.RuleID,
+		EntityType: m.EntityType,
+		Action:     action,
+	})
 }

@@ -10,6 +10,9 @@ Chinese notes for historical T0–T10 work remain in git history; new changelog 
 
 ## Unreleased
 
+- Breaking: detection plugins return all matches (`InspectResult.Matches`); the host merges every plugin instead of stopping at the first hit (SPEC-pii-entities).
+- Built-in `pii` detector (email, CN phone, CN id card, bank card); default action is redact. Input enforce+redact rebuilds `messages[].content` JSON; prompt hash still uses the original body.
+
 - Apache License 2.0 (`LICENSE` / `NOTICE`) (ADR-0014).
 - Public docs: English README as source, Chinese in `README.zh-CN.md` (ADR-0009).
 - CONTRIBUTING / SECURITY; README states self-host is first-class (ADR-0010).
