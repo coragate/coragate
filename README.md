@@ -22,7 +22,7 @@
 - **数据面（Go）**：热路径。`/v1/chat/completions` 只由 Go 写 SSE。面板没启动时数据面仍应能代理（T1 起）。
 - **控制面（Next.js App Router + shadcn/ui）**：规则 / 沙盒 / 看板。`controlplane/` 禁止做聊天流 BFF。
 
-当前数据面已代理 `POST /v1/chat/completions`（输入经内置关键字/正则插件检测；`enforce` 命中不打上游）。沙盒：`POST /v1/inspect`，不走上游。控制面仍是空壳（T7）。
+当前数据面已代理 `POST /v1/chat/completions`：输入同步检测；输出 SSE 滑动窗口边读边扫（插件接口）。`enforce` 输入命中不打上游。沙盒：`POST /v1/inspect`。控制面仍是空壳（T7）。
 
 ```bash
 export CORAGATE_UPSTREAM_BASE_URL=https://api.openai.com

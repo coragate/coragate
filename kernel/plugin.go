@@ -34,3 +34,17 @@ func InspectInput(ctx context.Context, inspectors []Inspector, text string) Insp
 	}
 	return InspectResult{}
 }
+
+// InspectOutputWindow 对滑动窗口调用插件（输出边读边扫）。
+func InspectOutputWindow(ctx context.Context, inspectors []Inspector, window string) InspectResult {
+	for _, p := range inspectors {
+		if p == nil {
+			continue
+		}
+		r := p.InspectOutputWindow(ctx, window)
+		if r.Hit {
+			return r
+		}
+	}
+	return InspectResult{}
+}

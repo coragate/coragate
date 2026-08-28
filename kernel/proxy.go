@@ -2,6 +2,7 @@ package kernel
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -95,7 +96,7 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(headerHitRule, hit.RuleID)
 	}
 	w.WriteHeader(resp.StatusCode)
-	_ = copyFlush(w, resp.Body)
+	_ = copyFlushScan(r.Context(), w, resp.Body, cfg)
 }
 
 func joinChatURL(base string) (string, error) {
@@ -146,18 +147,28 @@ func copyResponseHeaders(dst, src http.Header) {
 	}
 }
 
-// copyFlush 边读边写并 Flush，禁止攒完全部 body 再吐给客户端。
-func copyFlush(dst http.ResponseWriter, src io.Reader) error {
+// copyFlushScan 边转发边扫：原始 chunk 立刻 Flush；完整 data: 行才进入滑动窗口并调插件。
+func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, cfg Config) error {
 	flusher, _ := dst.(http.Flusher)
+	win := newSSEWindow(defaultWindowBytes)
 	buf := make([]byte, 4096)
 	for {
 		n, err := src.Read(buf)
 		if n > 0 {
-			if _, werr := dst.Write(buf[:n]); werr != nil {
+			chunk := buf[:n]
+			if _, werr := dst.Write(chunk); werr != nil {
 				return werr
 			}
 			if flusher != nil {
 				flusher.Flush()
+			}
+			if len(cfg.Inspectors) > 0 {
+				for _, snap := range win.Feed(chunk) {
+					hit := InspectOutputWindow(ctx, cfg.Inspectors, snap)
+					if hit.Hit && cfg.policyMode() == PolicyEnforce {
+						return nil
+					}
+				}
 			}
 		}
 		if err == io.EOF {
