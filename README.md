@@ -22,7 +22,22 @@
 - **数据面（Go）**：热路径。`/v1/chat/completions` 只由 Go 写 SSE。面板没启动时数据面仍应能代理（T1 起）。
 - **控制面（Next.js App Router + shadcn/ui）**：规则 / 沙盒 / 看板。`controlplane/` 禁止做聊天流 BFF。
 
-当前数据面已代理 `POST /v1/chat/completions`（SSE 透传，检测插件见 T2）。控制面仍是空壳（T7）。
+当前数据面已代理 `POST /v1/chat/completions`（输入经内置关键字/正则插件检测；`enforce` 命中不打上游）。沙盒：`POST /v1/inspect`，不走上游。控制面仍是空壳（T7）。
+
+```bash
+export CORAGATE_UPSTREAM_BASE_URL=https://api.openai.com
+# 可选：CORAGATE_POLICY_MODE=enforce
+# 可选：CORAGATE_DETECT_PATTERN='(?i)coragate-block-me'
+go run ./hosts/client/cmd/coragate
+```
+
+演示拦截：用户消息含 `coragate-block-me` 时返回 403，上游不会收到请求。沙盒：
+
+```bash
+curl -sS http://127.0.0.1:8080/v1/inspect \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"please coragate-block-me"}'
+```
 
 需要配置上游（OpenAI 兼容 `baseURL`），例如官方 API 或本地 vLLM：
 

@@ -18,6 +18,8 @@ type Config struct {
 	Listen          string
 	UpstreamBaseURL string
 	HTTPClient      *http.Client
+	PolicyMode      string
+	Inspectors      []Inspector
 }
 
 func (c Config) client() *http.Client {
@@ -38,8 +40,20 @@ func LoadConfig(host HostKind) Config {
 			listen = "0.0.0.0:8080"
 		}
 	}
+	mode := os.Getenv("CORAGATE_POLICY_MODE")
+	if mode == "" {
+		mode = PolicyEnforce
+	}
 	return Config{
 		Listen:          listen,
 		UpstreamBaseURL: os.Getenv("CORAGATE_UPSTREAM_BASE_URL"),
+		PolicyMode:      mode,
 	}
+}
+
+func (c Config) policyMode() string {
+	if c.PolicyMode == PolicyObserve {
+		return PolicyObserve
+	}
+	return PolicyEnforce
 }

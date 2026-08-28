@@ -4,5 +4,6 @@
 
 ## Unreleased
 
+- T2：插件宿主 + 内置关键字/正则；enforce 命中不打上游；`POST /v1/inspect` 沙盒。
 - T1：OpenAI 兼容 `POST /v1/chat/completions` SSE 透传代理。
 - T0：Monorepo 脚手架（内核/宿主/插件占位 + 控制面空壳）。

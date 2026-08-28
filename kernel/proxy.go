@@ -1,6 +1,8 @@
 package kernel
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -9,7 +11,9 @@ import (
 
 const (
 	chatPath          = "/v1/chat/completions"
+	inspectPath       = "/v1/inspect"
 	headerGatewayMark = "X-Coragate-Proxy"
+	headerHitRule     = "X-Coragate-Hit"
 )
 
 var hopByHop = map[string]bool{
@@ -30,6 +34,9 @@ func Handler(cfg Config) http.Handler {
 	mux.HandleFunc(chatPath, func(w http.ResponseWriter, r *http.Request) {
 		proxyChatCompletions(cfg, w, r)
 	})
+	mux.HandleFunc(inspectPath, func(w http.ResponseWriter, r *http.Request) {
+		handleInspect(cfg, w, r)
+	})
 	return mux
 }
 
@@ -39,6 +46,22 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":{"message":"method not allowed","type":"coragate_error"}}`, http.StatusMethodNotAllowed)
 		return
 	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, `{"error":{"message":"read body","type":"coragate_error"}}`, http.StatusBadRequest)
+		return
+	}
+	_ = r.Body.Close()
+
+	hit := InspectInput(r.Context(), cfg.Inspectors, ExtractChatText(body))
+	if hit.Hit {
+		w.Header().Set(headerHitRule, hit.RuleID)
+		if cfg.policyMode() == PolicyEnforce {
+			writeBlocked(w, hit.RuleID)
+			return
+		}
+	}
+
 	if strings.TrimSpace(cfg.UpstreamBaseURL) == "" {
 		http.Error(w, `{"error":{"message":"upstream not configured","type":"coragate_error"}}`, http.StatusServiceUnavailable)
 		return
@@ -49,13 +72,14 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ureq, err := http.NewRequestWithContext(r.Context(), http.MethodPost, target, r.Body)
+	ureq, err := http.NewRequestWithContext(r.Context(), http.MethodPost, target, bytes.NewReader(body))
 	if err != nil {
 		http.Error(w, `{"error":{"message":"build upstream request","type":"coragate_error"}}`, http.StatusBadGateway)
 		return
 	}
 	copyRequestHeaders(ureq.Header, r.Header)
-	ureq.ContentLength = r.ContentLength
+	ureq.ContentLength = int64(len(body))
+	ureq.Header.Set("Content-Length", fmt.Sprintf("%d", len(body)))
 	ureq.Header.Set("Accept", "text/event-stream, application/json")
 
 	resp, err := cfg.client().Do(ureq)
@@ -67,6 +91,9 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 
 	copyResponseHeaders(w.Header(), resp.Header)
 	w.Header().Set(headerGatewayMark, "1")
+	if hit.Hit {
+		w.Header().Set(headerHitRule, hit.RuleID)
+	}
 	w.WriteHeader(resp.StatusCode)
 	_ = copyFlush(w, resp.Body)
 }

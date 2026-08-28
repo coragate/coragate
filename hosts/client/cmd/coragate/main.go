@@ -1,7 +1,10 @@
 package main
 
-import "github.com/coragate/coragate/kernel"
+import (
+	"github.com/coragate/coragate/hosts/run"
+	"github.com/coragate/coragate/kernel"
+)
 
 func main() {
-	kernel.Run(kernel.HostClient)
+	run.Main(kernel.HostClient)
 }
