@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- T6b：同一内核两套宿主默认监听（本机 `127.0.0.1`、集群 `0.0.0.0`）。
 - T6：检测引擎不可用默认 fail-open（审计 `engine_error`）；显式 `fail_closed` 才拒绝；observe 命中不阻断。
 - T5：规则 JSON 快照加载与 reload（文件短轮询 / `POST /v1/reload`）；新请求用新规则。
 - T4：审计异步队列 + versioned envelope；默认文件 JSONL 适配器。

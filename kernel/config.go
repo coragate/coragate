@@ -13,6 +13,12 @@ const (
 	HostClient
 )
 
+// 两套宿主的默认监听。内核本身不假设集群 DNS；可用 CORAGATE_LISTEN 覆盖。
+const (
+	DefaultListenClient  = "127.0.0.1:8080"
+	DefaultListenCluster = "0.0.0.0:8080"
+)
+
 // Config 为数据面运行配置。
 type Config struct {
 	Listen          string
@@ -47,9 +53,9 @@ func LoadConfig(host HostKind) Config {
 	listen := os.Getenv("CORAGATE_LISTEN")
 	if listen == "" {
 		if host == HostClient {
-			listen = "127.0.0.1:8080"
+			listen = DefaultListenClient
 		} else {
-			listen = "0.0.0.0:8080"
+			listen = DefaultListenCluster
 		}
 	}
 	mode := os.Getenv("CORAGATE_POLICY_MODE")
