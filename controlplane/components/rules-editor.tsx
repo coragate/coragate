@@ -57,6 +57,7 @@ export function RulesEditor({
 
   const hasPii = catalog.some((p) => p.id === "pii");
   const hasInjection = catalog.some((p) => p.id === "injection");
+  const hasSecret = catalog.some((p) => p.id === "secret");
 
   return (
     <FieldGroup>
@@ -204,6 +205,26 @@ export function RulesEditor({
             }
           >
             {t("addInjection")}
+          </Button>
+        ) : null}
+        {hasSecret ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setRows((prev) => [
+                ...prev,
+                {
+                  id: `secret-aws-${prev.length + 1}`,
+                  plugin: "secret",
+                  type: "aws_access_key",
+                  action: defaultActionFor("secret", catalog),
+                  pattern: "",
+                },
+              ])
+            }
+          >
+            {t("addSecret")}
           </Button>
         ) : null}
       </div>

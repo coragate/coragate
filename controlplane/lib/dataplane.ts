@@ -68,6 +68,16 @@ export const FALLBACK_PLUGINS: PluginInfo[] = [
     default_action: "block",
     entity_types: ["prompt_injection"],
   },
+  {
+    id: "secret",
+    default_action: "block",
+    entity_types: [
+      "aws_access_key",
+      "github_pat",
+      "openai_api_key",
+      "pem_private_key",
+    ],
+  },
 ];
 
 export type AuditItem = {

@@ -93,7 +93,7 @@ func TestAC5_ExamplesOmitActionPerPluginDefault(t *testing.T) {
 	if err := json.Unmarshal([]byte(raw), &snap); err != nil {
 		t.Fatal(err)
 	}
-	var sawPII, sawInj bool
+	var sawPII, sawInj, sawSecret bool
 	for _, r := range snap.Rules {
 		switch r.Plugin {
 		case "pii":
@@ -106,6 +106,11 @@ func TestAC5_ExamplesOmitActionPerPluginDefault(t *testing.T) {
 			if r.Action != "" {
 				t.Fatal("injection example must omit action so default block applies")
 			}
+		case "secret":
+			sawSecret = true
+			if r.Action != "" {
+				t.Fatal("secret example must omit action so default block applies")
+			}
 		}
 	}
 	if !sawPII {
@@ -114,12 +119,16 @@ func TestAC5_ExamplesOmitActionPerPluginDefault(t *testing.T) {
 	if !sawInj {
 		t.Fatal("examples/rules.json must include an injection rule")
 	}
+	if !sawSecret {
+		t.Fatal("examples/rules.json must include a secret rule")
+	}
 	readme := readRepoFile(t, "README.md")
 	for _, want := range []string{
 		"default to redact",
 		"default to block",
 		`"plugin": "pii"`,
 		`"plugin": "injection"`,
+		`"plugin": "secret"`,
 		"hosts/client",
 		"hosts/cluster",
 	} {
@@ -270,6 +279,78 @@ func TestAC1_BuiltInInjectionPluginExists(t *testing.T) {
 	src := readRepoFile(t, "plugins/detect/injection/injection.go")
 	if strings.Contains(src, "kernel/proxy") {
 		t.Fatal("injection matching must not live in kernel proxy")
+	}
+}
+
+func TestAC1_BuiltInSecretPluginExists(t *testing.T) {
+	path := filepath.Join(repoRoot(t), "plugins/detect/secret/secret.go")
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("missing built-in secret plugin: %v", err)
+	}
+	src := readRepoFile(t, "plugins/detect/secret/secret.go")
+	if strings.Contains(src, "kernel/proxy") {
+		t.Fatal("secret matching must not live in kernel proxy")
+	}
+}
+
+func TestAC10_READMESameSecretPluginNoCloudDLP(t *testing.T) {
+	en := readRepoFile(t, "README.md")
+	zh := readRepoFile(t, "README.zh-CN.md")
+	for _, want := range []string{"secret", "hosts/client", "hosts/cluster", "same plugin"} {
+		if !strings.Contains(en, want) {
+			t.Fatalf("English README missing %q", want)
+		}
+	}
+	for _, bad := range []string{
+		"must log in to CoraGate Cloud",
+		"mandatory cloud DLP",
+		"the only secret scanner is Cloud",
+	} {
+		if strings.Contains(en, bad) {
+			t.Fatalf("README must not require cloud secret DLP: %q", bad)
+		}
+	}
+	if !strings.Contains(zh, "同一套插件") && !strings.Contains(zh, "同一插件") {
+		t.Fatal("Chinese README must say both hosts share the same plugin")
+	}
+	if !strings.Contains(zh, "不是「必须上云的 DLP」") {
+		t.Fatal("Chinese README must reject mandatory cloud DLP")
+	}
+}
+
+func TestAC6_ControlPlaneHasNoSecretFixtures(t *testing.T) {
+	root := filepath.Join(repoRoot(t), "controlplane")
+	needles := []string{
+		"AKIAIOSFODNN7EXAMPLE",
+		"ghp_0123456789abcdefghijklmnopqrstuvwxyz",
+		"sk-proj-abcdefghijklmnopqrstuvwxyz",
+		"-----BEGIN PRIVATE KEY-----",
+	}
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		name := d.Name()
+		if d.IsDir() && (name == "node_modules" || name == ".next") {
+			return fs.SkipDir
+		}
+		if d.IsDir() || !(strings.HasSuffix(name, ".ts") || strings.HasSuffix(name, ".tsx")) {
+			return nil
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		s := string(b)
+		for _, n := range needles {
+			if strings.Contains(s, n) {
+				t.Errorf("control plane must not embed secret fixtures: %s has %q", path, n)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

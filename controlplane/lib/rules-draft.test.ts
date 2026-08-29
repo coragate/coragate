@@ -12,6 +12,7 @@ describe("parsePlugin", () => {
   it("已知 plugin 原样返回", () => {
     expect(parsePlugin("pii", FALLBACK_PLUGINS)).toBe("pii");
     expect(parsePlugin("injection", FALLBACK_PLUGINS)).toBe("injection");
+    expect(parsePlugin("secret", FALLBACK_PLUGINS)).toBe("secret");
     expect(parsePlugin("keyword", FALLBACK_PLUGINS)).toBe("keyword");
   });
 
@@ -86,6 +87,7 @@ describe("fromRow", () => {
   it("缺 action 时用插件目录缺省", () => {
     expect(defaultActionFor("pii", FALLBACK_PLUGINS)).toBe("redact");
     expect(defaultActionFor("injection", FALLBACK_PLUGINS)).toBe("block");
+    expect(defaultActionFor("secret", FALLBACK_PLUGINS)).toBe("block");
     expect(fromRow({ id: "p", plugin: "pii", type: "email" }, FALLBACK_PLUGINS).action).toBe(
       "redact"
     );

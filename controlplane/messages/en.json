@@ -38,6 +38,7 @@
     "remove": "Remove this rule",
     "addPii": "Add PII rule",
     "addInjection": "Add injection rule",
+    "addSecret": "Add secret rule",
     "unknownPlugin": "Unknown plugin — the dataplane will reject this rule. It is not treated as keyword."
   },
   "sandbox": {

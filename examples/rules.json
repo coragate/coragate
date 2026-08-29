@@ -15,6 +15,11 @@
       "id": "injection-prompt",
       "plugin": "injection",
       "type": "prompt_injection"
+    },
+    {
+      "id": "secret-aws",
+      "plugin": "secret",
+      "type": "aws_access_key"
     }
   ]
 }

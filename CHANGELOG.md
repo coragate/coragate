@@ -10,6 +10,9 @@ Chinese notes for historical T0–T10 work remain in git history; new changelog 
 
 ## Unreleased
 
+- Built-in `secret` detector (AWS access key, GitHub PAT, OpenAI `sk-proj-`, PEM private key); default action is **block**. `hosts/client` and `hosts/cluster` compile the same plugin; this is not a Cloud-only DLP product (SPEC-secret-entities).
+- Control plane: pick `plugin=secret` from the host catalog; matching stays in the Go plugin.
+
 - Host plugin catalog `GET /v1/plugins`; compiler Factory Method map (unknown plugin rejected, not coerced to keyword); SSE copy Template Method; inspect JSON lists `matches[]`; audit queue drop counter (ADR-0016).
 - Built-in `injection` detector (first jailbreak / instruction-override fixtures); default action is **block**. `hosts/client` and `hosts/cluster` compile the same plugin; this is not a Cloud-only guardrail (SPEC-prompt-injection).
 - Control plane: pick `plugin=injection` (entity type `prompt_injection`); matching stays in the Go plugin.

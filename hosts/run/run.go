@@ -11,6 +11,7 @@ import (
 	"github.com/coragate/coragate/plugins/detect/injection"
 	"github.com/coragate/coragate/plugins/detect/keyword"
 	"github.com/coragate/coragate/plugins/detect/pii"
+	"github.com/coragate/coragate/plugins/detect/secret"
 	"github.com/coragate/coragate/plugins/storage/file"
 )
 
@@ -64,7 +65,7 @@ func loadRules(rs *kernel.Ruleset, path string) error {
 }
 
 func pluginCatalog() []kernel.PluginInfo {
-	return []kernel.PluginInfo{keyword.Info(), pii.Info(), injection.Info()}
+	return []kernel.PluginInfo{keyword.Info(), pii.Info(), injection.Info(), secret.Info()}
 }
 
 func pluginFactories() map[string]func(kernel.SnapshotRule) (kernel.Inspector, error) {
@@ -72,6 +73,7 @@ func pluginFactories() map[string]func(kernel.SnapshotRule) (kernel.Inspector, e
 		kernel.PluginKeyword:   keyword.Compile,
 		kernel.PluginPII:       pii.Compile,
 		kernel.PluginInjection: injection.Compile,
+		kernel.PluginSecret:    secret.Compile,
 	}
 }
 
