@@ -36,7 +36,8 @@
     "entityType": "Entity type",
     "pattern": "Pattern (regex)",
     "remove": "Remove this rule",
-    "addPii": "Add PII rule"
+    "addPii": "Add PII rule",
+    "addInjection": "Add injection rule"
   },
   "sandbox": {
     "title": "Sandbox",

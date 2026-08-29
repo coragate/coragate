@@ -169,6 +169,94 @@ func TestAC12_READMEShowsClientAndCluster(t *testing.T) {
 	}
 }
 
+func TestAC5_ExamplesInjectionOmitsActionDefaultsBlock(t *testing.T) {
+	raw := readRepoFile(t, "examples/rules.json")
+	if !strings.Contains(raw, `"plugin": "injection"`) {
+		t.Fatal("examples/rules.json must include an injection rule")
+	}
+	if strings.Contains(raw, `"action"`) {
+		t.Fatal("examples/rules.json must omit action so injection defaults to block")
+	}
+	readme := readRepoFile(t, "README.md")
+	for _, want := range []string{"default to block", `"plugin": "injection"`, "hosts/client", "hosts/cluster"} {
+		if !strings.Contains(readme, want) {
+			t.Fatalf("README missing %q", want)
+		}
+	}
+}
+
+func TestAC10_READMESameInjectionPluginNoCloudGuardrail(t *testing.T) {
+	en := readRepoFile(t, "README.md")
+	zh := readRepoFile(t, "README.zh-CN.md")
+	for _, want := range []string{"injection", "hosts/client", "hosts/cluster", "same plugin"} {
+		if !strings.Contains(en, want) {
+			t.Fatalf("English README missing %q", want)
+		}
+	}
+	for _, bad := range []string{
+		"must log in to CoraGate Cloud",
+		"mandatory cloud guardrail",
+		"the only injection defense is Cloud",
+	} {
+		if strings.Contains(en, bad) {
+			t.Fatalf("README must not require cloud injection guardrail: %q", bad)
+		}
+	}
+	if !strings.Contains(zh, "同一套插件") && !strings.Contains(zh, "同一插件") {
+		t.Fatal("Chinese README must say both hosts share the same plugin")
+	}
+	if !strings.Contains(zh, "不是「必须上云的护栏」") {
+		t.Fatal("Chinese README must reject mandatory cloud guardrail")
+	}
+}
+
+func TestAC6_ControlPlaneHasNoInjectionFixtures(t *testing.T) {
+	root := filepath.Join(repoRoot(t), "controlplane")
+	needles := []string{
+		"Ignore all previous instructions",
+		"忽略以上所有指令",
+		"Do Anything Now",
+		"ignore[\\s\\S]{0,80}previous",
+	}
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		name := d.Name()
+		if d.IsDir() && (name == "node_modules" || name == ".next") {
+			return fs.SkipDir
+		}
+		if d.IsDir() || !(strings.HasSuffix(name, ".ts") || strings.HasSuffix(name, ".tsx")) {
+			return nil
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		s := string(b)
+		for _, n := range needles {
+			if strings.Contains(s, n) {
+				t.Errorf("control plane must not embed injection fixtures/regex: %s has %q", path, n)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAC1_BuiltInInjectionPluginExists(t *testing.T) {
+	path := filepath.Join(repoRoot(t), "plugins/detect/injection/injection.go")
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("missing built-in injection plugin: %v", err)
+	}
+	src := readRepoFile(t, "plugins/detect/injection/injection.go")
+	if strings.Contains(src, "kernel/proxy") {
+		t.Fatal("injection matching must not live in kernel proxy")
+	}
+}
+
 func TestADR0009_EnglishREADMEHasChineseTranslation(t *testing.T) {
 	en := readRepoFile(t, "README.md")
 	zh := readRepoFile(t, "README.zh-CN.md")

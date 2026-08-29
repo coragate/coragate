@@ -40,6 +40,7 @@ const (
 
 const PluginPII = "pii"
 const PluginKeyword = "keyword"
+const PluginInjection = "injection"
 
 // Span is a byte range in the string passed to the Inspector (extracted text or window snapshot).
 type Span struct {

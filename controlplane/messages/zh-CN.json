@@ -36,7 +36,8 @@
     "entityType": "实体类型",
     "pattern": "模式（正则）",
     "remove": "删除此条",
-    "addPii": "添加 PII 规则"
+    "addPii": "添加 PII 规则",
+    "addInjection": "添加注入检测规则"
   },
   "sandbox": {
     "title": "沙盒",

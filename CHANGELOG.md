@@ -10,6 +10,9 @@ Chinese notes for historical T0–T10 work remain in git history; new changelog 
 
 ## Unreleased
 
+- Built-in `injection` detector (first jailbreak / instruction-override fixtures); default action is **block**. `hosts/client` and `hosts/cluster` compile the same plugin; this is not a Cloud-only guardrail (SPEC-prompt-injection).
+- Control plane: pick `plugin=injection` (entity type `prompt_injection`); matching stays in the Go plugin.
+
 - Control plane: English/zh-CN UI via cookie `coragate_locale` (no locale in the URL path) (SPEC-controlplane-i18n).
 - Control plane: placeholder operator in the sidebar footer; language lives on Settings (`/?view=settings`).
 

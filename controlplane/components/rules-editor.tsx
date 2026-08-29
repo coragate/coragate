@@ -13,25 +13,39 @@ import type { RuleRow } from "@/lib/dataplane";
 
 const PII_TYPES = ["email", "phone_cn", "id_card_cn", "bank_card"] as const;
 
+type PluginID = "keyword" | "pii" | "injection";
+
 type DraftRule = {
   id: string;
-  plugin: "keyword" | "pii";
+  plugin: PluginID;
   type: string;
   action: "block" | "redact";
   pattern: string;
 };
 
+function parsePlugin(v: string | undefined): PluginID {
+  if (v === "pii") return "pii";
+  if (v === "injection") return "injection";
+  return "keyword";
+}
+
+function defaultAction(plugin: PluginID): "block" | "redact" {
+  return plugin === "pii" ? "redact" : "block";
+}
+
 function fromRow(r: RuleRow): DraftRule {
-  const plugin = r.plugin === "pii" ? "pii" : "keyword";
+  const plugin = parsePlugin(r.plugin);
   return {
     id: r.id,
     plugin,
-    type: r.type ?? "email",
-    action: r.action === "redact" || r.action === "block"
-      ? r.action
-      : plugin === "pii"
-        ? "redact"
-        : "block",
+    type:
+      plugin === "injection"
+        ? "prompt_injection"
+        : r.type ?? "email",
+    action:
+      r.action === "redact" || r.action === "block"
+        ? r.action
+        : defaultAction(plugin),
     pattern: r.pattern ?? "",
   };
 }
@@ -44,6 +58,8 @@ function toRow(d: DraftRule): RuleRow {
   };
   if (d.plugin === "pii") {
     row.type = d.type;
+  } else if (d.plugin === "injection") {
+    row.type = "prompt_injection";
   } else {
     row.pattern = d.pattern;
   }
@@ -112,15 +128,24 @@ export function RulesEditor({
               <NativeSelect
                 value={row.plugin}
                 onChange={(e) => {
-                  const plugin = e.target.value === "pii" ? "pii" : "keyword";
+                  const plugin = parsePlugin(e.target.value);
                   update(i, {
                     plugin,
-                    action: plugin === "pii" ? "redact" : "block",
+                    action: defaultAction(plugin),
+                    type:
+                      plugin === "injection"
+                        ? "prompt_injection"
+                        : plugin === "pii"
+                          ? "email"
+                          : row.type,
                   });
                 }}
               >
                 <NativeSelectOption value="keyword">keyword</NativeSelectOption>
                 <NativeSelectOption value="pii">pii</NativeSelectOption>
+                <NativeSelectOption value="injection">
+                  injection
+                </NativeSelectOption>
               </NativeSelect>
             </Field>
             <Field>
@@ -151,6 +176,15 @@ export function RulesEditor({
                   ))}
                 </NativeSelect>
               </Field>
+            ) : row.plugin === "injection" ? (
+              <Field>
+                <FieldLabel>{t("entityType")}</FieldLabel>
+                <NativeSelect value="prompt_injection" disabled>
+                  <NativeSelectOption value="prompt_injection">
+                    prompt_injection
+                  </NativeSelectOption>
+                </NativeSelect>
+              </Field>
             ) : (
               <Field className="min-w-48 flex-1">
                 <FieldLabel>{t("pattern")}</FieldLabel>
@@ -174,24 +208,44 @@ export function RulesEditor({
           </Button>
         </div>
       ))}
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() =>
-          setRows((prev) => [
-            ...prev,
-            {
-              id: `pii-email-${prev.length + 1}`,
-              plugin: "pii",
-              type: "email",
-              action: "redact",
-              pattern: "",
-            },
-          ])
-        }
-      >
-        {t("addPii")}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() =>
+            setRows((prev) => [
+              ...prev,
+              {
+                id: `pii-email-${prev.length + 1}`,
+                plugin: "pii",
+                type: "email",
+                action: "redact",
+                pattern: "",
+              },
+            ])
+          }
+        >
+          {t("addPii")}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() =>
+            setRows((prev) => [
+              ...prev,
+              {
+                id: `injection-prompt-${prev.length + 1}`,
+                plugin: "injection",
+                type: "prompt_injection",
+                action: "block",
+                pattern: "",
+              },
+            ])
+          }
+        >
+          {t("addInjection")}
+        </Button>
+      </div>
     </FieldGroup>
   );
 }

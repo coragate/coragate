@@ -10,6 +10,11 @@
       "id": "pii-email",
       "plugin": "pii",
       "type": "email"
+    },
+    {
+      "id": "injection-prompt",
+      "plugin": "injection",
+      "type": "prompt_injection"
     }
   ]
 }

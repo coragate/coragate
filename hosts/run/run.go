@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/coragate/coragate/kernel"
+	"github.com/coragate/coragate/plugins/detect/injection"
 	"github.com/coragate/coragate/plugins/detect/keyword"
 	"github.com/coragate/coragate/plugins/detect/pii"
 	"github.com/coragate/coragate/plugins/storage/file"
@@ -81,6 +82,16 @@ func compileSnapshot(snap kernel.RuleSnapshot) ([]kernel.Inspector, error) {
 			out = append(out, p)
 		case kernel.PluginPII:
 			p, err := pii.New(pii.Rule{
+				ID:     r.ID,
+				Type:   r.Type,
+				Action: kernel.ResolveAction(plugin, r.Action),
+			})
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, p)
+		case kernel.PluginInjection:
+			p, err := injection.New(injection.Rule{
 				ID:     r.ID,
 				Type:   r.Type,
 				Action: kernel.ResolveAction(plugin, r.Action),
