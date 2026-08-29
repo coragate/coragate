@@ -4,14 +4,16 @@ import (
 	"context"
 	"log"
 	"sync"
+	"sync/atomic"
 )
 
 // Auditor is an in-memory queue with a background flush. Enqueue must not wait on the adapter.
 type Auditor struct {
-	store Store
-	ch    chan Envelope
-	done  chan struct{}
-	once  sync.Once
+	store   Store
+	ch      chan Envelope
+	done    chan struct{}
+	once    sync.Once
+	dropped atomic.Uint64
 }
 
 // NewAuditor starts the background worker. If store is nil, Enqueue is a no-op.
@@ -48,7 +50,17 @@ func (a *Auditor) Enqueue(env Envelope) {
 	select {
 	case a.ch <- env:
 	default:
+		n := a.dropped.Add(1)
+		log.Printf("audit drop: queue full, dropped=%d", n)
 	}
+}
+
+// Dropped is the number of envelopes discarded because the queue was full.
+func (a *Auditor) Dropped() uint64 {
+	if a == nil {
+		return 0
+	}
+	return a.dropped.Load()
 }
 
 // Close drains the queue then stops the worker.

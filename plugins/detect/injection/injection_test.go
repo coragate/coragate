@@ -69,9 +69,9 @@ func TestAC9_未知type拒绝_空type视为注入(t *testing.T) {
 	}
 }
 
-func TestAC4_最长夹具不超过holdback(t *testing.T) {
+func TestAC4_最长夹具不超过滑动窗口(t *testing.T) {
 	if !MustFitWindow() {
-		t.Fatalf("最长夹具 %d 字节，hold-back=%d", LongestFixtureBytes(), WindowHoldbackBytes)
+		t.Fatalf("最长夹具 %d 字节，窗口=%d", LongestFixtureBytes(), kernel.DefaultWindowBytes)
 	}
 }
 

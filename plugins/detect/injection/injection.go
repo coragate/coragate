@@ -12,11 +12,24 @@ import (
 // 实体类型 ID（规则 JSON type 与审计 entity_type 共用）。
 const EntityPromptInjection = "prompt_injection"
 
-// WindowHoldbackBytes 是覆盖最长夹具所需的最小输出窗口（F4 ≈ 100 字节）。
-// 内核 SSE 窗口为 4096，大于本值（SPEC-prompt-injection AC-4）。
-const WindowHoldbackBytes = 128
-
 const defaultRuleID = "injection-prompt"
+
+// DefaultAction is the snapshot default when action is omitted.
+const DefaultAction = kernel.ActionBlock
+
+// Info is the host catalog entry (Factory Method registry).
+func Info() kernel.PluginInfo {
+	return kernel.PluginInfo{
+		ID:            kernel.PluginInjection,
+		DefaultAction: DefaultAction,
+		EntityTypes:   []string{EntityPromptInjection},
+	}
+}
+
+// Compile builds an Inspector from a snapshot row.
+func Compile(r kernel.SnapshotRule) (kernel.Inspector, error) {
+	return New(Rule{ID: r.ID, Type: r.Type, Action: r.Action})
+}
 
 // 夹具表（验收真源，SPEC-prompt-injection）。
 const (
@@ -64,7 +77,7 @@ func New(rule Rule) (*Plugin, error) {
 	}
 	return &Plugin{
 		id:     id,
-		action: kernel.ResolveAction(kernel.PluginInjection, rule.Action),
+		action: kernel.ResolveAction(rule.Action, DefaultAction),
 	}, nil
 }
 
@@ -121,7 +134,7 @@ func LongestFixtureBytes() int {
 	return n
 }
 
-// MustFitWindow 在编译期可被测试调用：夹具须能放进声明的 hold-back。
+// MustFitWindow：夹具须能放进内核滑动窗口。block 不另开 hold-back 管道。
 func MustFitWindow() bool {
-	return LongestFixtureBytes() <= WindowHoldbackBytes && WindowHoldbackBytes <= 4096 && utf8.ValidString(FixtureF3Hit)
+	return LongestFixtureBytes() <= kernel.DefaultWindowBytes && utf8.ValidString(FixtureF3Hit)
 }

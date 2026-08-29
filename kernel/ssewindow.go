@@ -6,7 +6,10 @@ import (
 	"strings"
 )
 
-const defaultWindowBytes = 4096
+// DefaultWindowBytes is the sliding output-scan window (block path; not a redact hold-back).
+const DefaultWindowBytes = 4096
+
+const defaultWindowBytes = DefaultWindowBytes
 
 // OutputHoldbackRunes is the max first-batch entity length (email path, RFC 5321).
 const OutputHoldbackRunes = 254

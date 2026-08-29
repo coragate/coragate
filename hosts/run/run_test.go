@@ -76,6 +76,19 @@ func TestUnknownPluginRejected(t *testing.T) {
 	}
 }
 
+func TestPluginCatalogIDsMatchFactories(t *testing.T) {
+	cat := pluginCatalog()
+	fac := pluginFactories()
+	if len(cat) != len(fac) {
+		t.Fatalf("catalog=%d factories=%d", len(cat), len(fac))
+	}
+	for _, p := range cat {
+		if _, ok := fac[p.ID]; !ok {
+			t.Fatalf("catalog id %q missing factory", p.ID)
+		}
+	}
+}
+
 func TestInvalidRegexLeftToCaller(t *testing.T) {
 	_, err := compileSnapshot(kernel.RuleSnapshot{
 		SchemaVersion: kernel.RulesSchemaVersion,

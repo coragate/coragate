@@ -77,6 +77,10 @@ func TestAC11_Inspect夹具命中与对照句(t *testing.T) {
 	if hit["entity_type"] != injection.EntityPromptInjection {
 		t.Fatalf("entity_type=%v", hit["entity_type"])
 	}
+	matches, _ := hit["matches"].([]any)
+	if len(matches) == 0 {
+		t.Fatalf("inspect 应列出 matches：%v", hit)
+	}
 
 	miss := post(injection.FixtureF1Miss)
 	if miss["hit"] == true {

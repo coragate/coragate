@@ -13,6 +13,23 @@ const DefaultPattern = `(?i)coragate-block-me`
 
 const defaultRuleID = "demo-keyword"
 
+// DefaultAction is the snapshot default when action is omitted.
+const DefaultAction = kernel.ActionBlock
+
+// Info is the host catalog entry (Factory Method registry).
+func Info() kernel.PluginInfo {
+	return kernel.PluginInfo{
+		ID:            kernel.PluginKeyword,
+		DefaultAction: DefaultAction,
+		NeedsPattern:  true,
+	}
+}
+
+// Compile builds an Inspector from a snapshot row.
+func Compile(r kernel.SnapshotRule) (kernel.Inspector, error) {
+	return New(Rule{ID: r.ID, Pattern: r.Pattern, Action: r.Action})
+}
+
 // Rule is one keyword/regex rule.
 type Rule struct {
 	ID      string
@@ -43,7 +60,7 @@ func New(rule Rule) (*Plugin, error) {
 	}
 	return &Plugin{
 		id:     id,
-		action: kernel.ResolveAction(kernel.PluginKeyword, rule.Action),
+		action: kernel.ResolveAction(rule.Action, DefaultAction),
 		re:     re,
 	}, nil
 }

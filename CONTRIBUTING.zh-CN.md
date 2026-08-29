@@ -16,6 +16,7 @@
 - 数据面是舰队：文档必须同时给出 `hosts/client`（`127.0.0.1`）与 `hosts/cluster`（`0.0.0.0`）。
 - 控制面组件用 `shadcn add @shark/<component>`（Shark UI）；图标用 Lucide。
 - 持久化走存储适配器；禁止把 SQLite DDL 焊进 `kernel/`。
+- 现链能承接则沿链路支持；承接不住则重做设计，禁止打补丁（ADR-0016）。动手前先按 GoF 模式选型。
 
 ## Pull request
 

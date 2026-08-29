@@ -15,6 +15,23 @@ const (
 	TypeBankCard = "bank_card"
 )
 
+// DefaultAction is the snapshot default when action is omitted.
+const DefaultAction = kernel.ActionRedact
+
+// Info is the host catalog entry (Factory Method registry).
+func Info() kernel.PluginInfo {
+	return kernel.PluginInfo{
+		ID:            kernel.PluginPII,
+		DefaultAction: DefaultAction,
+		EntityTypes:   []string{TypeEmail, TypePhoneCN, TypeIDCardCN, TypeBankCard},
+	}
+}
+
+// Compile builds an Inspector from a snapshot row.
+func Compile(r kernel.SnapshotRule) (kernel.Inspector, error) {
+	return New(Rule{ID: r.ID, Type: r.Type, Action: r.Action})
+}
+
 var emailRe = regexp.MustCompile(`[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`)
 var idCardRe = regexp.MustCompile(`[0-9]{17}[0-9Xx]`)
 var bankCardRe = regexp.MustCompile(`[0-9]{13,19}`)
@@ -50,7 +67,7 @@ func New(rule Rule) (*Plugin, error) {
 	return &Plugin{
 		id:     id,
 		typ:    rule.Type,
-		action: kernel.ResolveAction(kernel.PluginPII, rule.Action),
+		action: kernel.ResolveAction(rule.Action, DefaultAction),
 	}, nil
 }
 
@@ -73,32 +90,11 @@ func (p *Plugin) match(text string) kernel.InspectResult {
 	if p == nil {
 		return kernel.InspectResult{}
 	}
-	var spans []kernel.Span
-	switch p.typ {
-	case TypeEmail:
-		spans = indexAll(emailRe, text)
-	case TypePhoneCN:
-		spans = phoneCNSpans(text)
-	case TypeIDCardCN:
-		for _, loc := range idCardRe.FindAllStringIndex(text, -1) {
-			if idChecksumOK(text[loc[0]:loc[1]]) {
-				spans = append(spans, kernel.Span{Start: loc[0], End: loc[1]})
-			}
-		}
-	case TypeBankCard:
-		for _, loc := range bankCardRe.FindAllStringIndex(text, -1) {
-			num := text[loc[0]:loc[1]]
-			if !digitRunBounded(text, loc[0], loc[1]) {
-				continue
-			}
-			if len(num) == 18 && idChecksumOK(num) {
-				continue
-			}
-			if luhnOK(num) {
-				spans = append(spans, kernel.Span{Start: loc[0], End: loc[1]})
-			}
-		}
+	fn, ok := matchers[p.typ]
+	if !ok {
+		return kernel.InspectResult{}
 	}
+	spans := fn(text)
 	if len(spans) == 0 {
 		return kernel.InspectResult{}
 	}
@@ -109,6 +105,42 @@ func (p *Plugin) match(text string) kernel.InspectResult {
 		Spans:      spans,
 	}
 	return kernel.InspectResult{Hit: true, RuleID: p.id, Matches: []kernel.Match{m}}
+}
+
+type matcher func(string) []kernel.Span
+
+var matchers = map[string]matcher{
+	TypeEmail:    func(text string) []kernel.Span { return indexAll(emailRe, text) },
+	TypePhoneCN:  phoneCNSpans,
+	TypeIDCardCN: idCardSpans,
+	TypeBankCard: bankCardSpans,
+}
+
+func idCardSpans(text string) []kernel.Span {
+	var spans []kernel.Span
+	for _, loc := range idCardRe.FindAllStringIndex(text, -1) {
+		if idChecksumOK(text[loc[0]:loc[1]]) {
+			spans = append(spans, kernel.Span{Start: loc[0], End: loc[1]})
+		}
+	}
+	return spans
+}
+
+func bankCardSpans(text string) []kernel.Span {
+	var spans []kernel.Span
+	for _, loc := range bankCardRe.FindAllStringIndex(text, -1) {
+		num := text[loc[0]:loc[1]]
+		if !digitRunBounded(text, loc[0], loc[1]) {
+			continue
+		}
+		if len(num) == 18 && idChecksumOK(num) {
+			continue
+		}
+		if luhnOK(num) {
+			spans = append(spans, kernel.Span{Start: loc[0], End: loc[1]})
+		}
+	}
+	return spans
 }
 
 func indexAll(re *regexp.Regexp, text string) []kernel.Span {

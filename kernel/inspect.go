@@ -37,11 +37,12 @@ type inspectRequest struct {
 }
 
 type inspectResponse struct {
-	Hit         bool   `json:"hit"`
-	RuleID      string `json:"rule_id,omitempty"`
-	EngineError string `json:"engine_error,omitempty"`
-	EntityType  string `json:"entity_type,omitempty"`
-	Action      string `json:"action,omitempty"`
+	Hit         bool    `json:"hit"`
+	RuleID      string  `json:"rule_id,omitempty"`
+	EngineError string  `json:"engine_error,omitempty"`
+	Matches     []Match `json:"matches,omitempty"`
+	EntityType  string  `json:"entity_type,omitempty"`
+	Action      string  `json:"action,omitempty"`
 }
 
 func handleInspect(cfg Config, w http.ResponseWriter, r *http.Request) {
@@ -77,6 +78,7 @@ func handleInspect(cfg Config, w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(inspectResponse{
 		Hit:        hit.Hit,
 		RuleID:     hit.RuleID,
+		Matches:    hit.Matches,
 		EntityType: m.EntityType,
 		Action:     action,
 	})

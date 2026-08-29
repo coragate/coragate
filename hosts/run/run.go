@@ -21,6 +21,7 @@ func Main(host kernel.HostKind) {
 		return
 	}
 	cfg := kernel.LoadConfig(host)
+	cfg.Plugins = pluginCatalog()
 	rulesPath := envOr("CORAGATE_RULES_PATH", "data/rules.json")
 	rs := kernel.NewRuleset(compileSnapshot)
 	if err := loadRules(rs, rulesPath); err != nil {
@@ -62,47 +63,35 @@ func loadRules(rs *kernel.Ruleset, path string) error {
 	return nil
 }
 
+func pluginCatalog() []kernel.PluginInfo {
+	return []kernel.PluginInfo{keyword.Info(), pii.Info(), injection.Info()}
+}
+
+func pluginFactories() map[string]func(kernel.SnapshotRule) (kernel.Inspector, error) {
+	return map[string]func(kernel.SnapshotRule) (kernel.Inspector, error){
+		kernel.PluginKeyword:   keyword.Compile,
+		kernel.PluginPII:       pii.Compile,
+		kernel.PluginInjection: injection.Compile,
+	}
+}
+
 func compileSnapshot(snap kernel.RuleSnapshot) ([]kernel.Inspector, error) {
+	factories := pluginFactories()
 	out := make([]kernel.Inspector, 0, len(snap.Rules))
 	for _, r := range snap.Rules {
 		plugin := r.Plugin
 		if plugin == "" {
-			plugin = "keyword"
+			plugin = kernel.PluginKeyword
 		}
-		switch plugin {
-		case kernel.PluginKeyword:
-			p, err := keyword.New(keyword.Rule{
-				ID:      r.ID,
-				Pattern: r.Pattern,
-				Action:  kernel.ResolveAction(plugin, r.Action),
-			})
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, p)
-		case kernel.PluginPII:
-			p, err := pii.New(pii.Rule{
-				ID:     r.ID,
-				Type:   r.Type,
-				Action: kernel.ResolveAction(plugin, r.Action),
-			})
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, p)
-		case kernel.PluginInjection:
-			p, err := injection.New(injection.Rule{
-				ID:     r.ID,
-				Type:   r.Type,
-				Action: kernel.ResolveAction(plugin, r.Action),
-			})
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, p)
-		default:
+		fn, ok := factories[plugin]
+		if !ok {
 			return nil, fmt.Errorf("未知检测插件 %q", plugin)
 		}
+		p, err := fn(r)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
 	}
 	return out, nil
 }

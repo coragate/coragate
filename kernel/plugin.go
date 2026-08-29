@@ -44,16 +44,16 @@ const PluginInjection = "injection"
 
 // Span is a byte range in the string passed to the Inspector (extracted text or window snapshot).
 type Span struct {
-	Start int
-	End   int
+	Start int `json:"start"`
+	End   int `json:"end"`
 }
 
 // Match is one plugin hit. A single Inspector call may return many Matches.
 type Match struct {
-	RuleID     string
-	EntityType string
-	Action     string
-	Spans      []Span
+	RuleID     string `json:"rule_id"`
+	EntityType string `json:"entity_type,omitempty"`
+	Action     string `json:"action,omitempty"`
+	Spans      []Span `json:"spans,omitempty"`
 }
 
 // InspectResult is a plugin verdict on a text span. Matching logic stays inside the plugin.
@@ -72,15 +72,23 @@ type Inspector interface {
 	InspectOutputWindow(ctx context.Context, window string) InspectResult
 }
 
-// ResolveAction fills a missing action: pii defaults to redact, everything else to block.
-func ResolveAction(plugin, action string) string {
+// ResolveAction fills a missing action from the plugin's declared default (not a kernel plugin-name table).
+func ResolveAction(action, defaultAction string) string {
 	if action == ActionBlock || action == ActionRedact {
 		return action
 	}
-	if plugin == PluginPII {
+	if defaultAction == ActionRedact {
 		return ActionRedact
 	}
 	return ActionBlock
+}
+
+// PluginInfo is the host catalog entry for one built-in detector (Factory Method registry).
+type PluginInfo struct {
+	ID            string   `json:"id"`
+	DefaultAction string   `json:"default_action"`
+	NeedsPattern  bool     `json:"needs_pattern,omitempty"`
+	EntityTypes   []string `json:"entity_types,omitempty"`
 }
 
 // MatchAction returns block when Action is empty (legacy keyword / stubs).

@@ -37,7 +37,8 @@
     "pattern": "模式（正则）",
     "remove": "删除此条",
     "addPii": "添加 PII 规则",
-    "addInjection": "添加注入检测规则"
+    "addInjection": "添加注入检测规则",
+    "unknownPlugin": "未知插件 — 数据面会拒绝该规则，不会静默当成 keyword。"
   },
   "sandbox": {
     "title": "沙盒",

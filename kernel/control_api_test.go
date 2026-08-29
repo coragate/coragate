@@ -100,6 +100,30 @@ func TestControlPlaneReadOnlyAuditList(t *testing.T) {
 	}
 }
 
+func TestGETPluginsReturnsCatalog(t *testing.T) {
+	gw := httptest.NewServer(Handler(Config{
+		Plugins: []PluginInfo{{ID: "keyword", DefaultAction: ActionBlock, NeedsPattern: true}},
+	}))
+	t.Cleanup(gw.Close)
+	resp, err := http.Get(gw.URL + "/v1/plugins")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status=%d", resp.StatusCode)
+	}
+	var payload struct {
+		Plugins []PluginInfo `json:"plugins"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		t.Fatal(err)
+	}
+	if len(payload.Plugins) != 1 || payload.Plugins[0].ID != "keyword" {
+		t.Fatalf("plugins = %+v", payload.Plugins)
+	}
+}
+
 type memStore struct {
 	items []Envelope
 }

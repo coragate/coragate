@@ -32,6 +32,7 @@ type Config struct {
 	Rules           *Ruleset
 	RulesPath       string
 	Auditor         *Auditor
+	Plugins         []PluginInfo
 }
 
 // inspectors returns plugins for one request. When Rules is set, the snapshot wins so reload takes effect on the next request.

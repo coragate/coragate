@@ -127,6 +127,27 @@ func TestAC7_EnvelopeFields(t *testing.T) {
 	}
 }
 
+func TestAuditorDroppedCountsFullQueue(t *testing.T) {
+	st := &blockStore{enter: make(chan struct{}), wait: make(chan struct{})}
+	a := NewAuditor(st, 1)
+	t.Cleanup(func() {
+		close(st.wait)
+		a.Close()
+	})
+	env := Envelope{RuleID: "drop"}
+	a.Enqueue(env)
+	select {
+	case <-st.enter:
+	case <-time.After(time.Second):
+		t.Fatal("worker did not take first event")
+	}
+	a.Enqueue(env)
+	a.Enqueue(env)
+	if a.Dropped() < 1 {
+		t.Fatalf("dropped=%d, want at least 1", a.Dropped())
+	}
+}
+
 type captureStore struct{ ch chan Envelope }
 
 func (c *captureStore) Append(_ context.Context, env Envelope) error {

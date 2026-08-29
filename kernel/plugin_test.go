@@ -152,4 +152,7 @@ func TestSandboxInspectDoesNotCallUpstream(t *testing.T) {
 	if !out.Hit || out.RuleID != "t-block" {
 		t.Fatalf("sandbox result = %+v", out)
 	}
+	if len(out.Matches) != 1 || out.Matches[0].RuleID != "t-block" {
+		t.Fatalf("sandbox matches = %+v", out.Matches)
+	}
 }

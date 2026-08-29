@@ -1,6 +1,7 @@
 package accheck
 
 import (
+	"encoding/json"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -81,16 +82,47 @@ func TestAC10_BuiltInKeywordPluginExists(t *testing.T) {
 	}
 }
 
-func TestAC5_ExamplesPIIOmitsActionDefaultsRedact(t *testing.T) {
+func TestAC5_ExamplesOmitActionPerPluginDefault(t *testing.T) {
 	raw := readRepoFile(t, "examples/rules.json")
-	if !strings.Contains(raw, `"plugin": "pii"`) {
+	var snap struct {
+		Rules []struct {
+			Plugin string `json:"plugin"`
+			Action string `json:"action"`
+		} `json:"rules"`
+	}
+	if err := json.Unmarshal([]byte(raw), &snap); err != nil {
+		t.Fatal(err)
+	}
+	var sawPII, sawInj bool
+	for _, r := range snap.Rules {
+		switch r.Plugin {
+		case "pii":
+			sawPII = true
+			if r.Action != "" {
+				t.Fatal("pii example must omit action so default redact applies")
+			}
+		case "injection":
+			sawInj = true
+			if r.Action != "" {
+				t.Fatal("injection example must omit action so default block applies")
+			}
+		}
+	}
+	if !sawPII {
 		t.Fatal("examples/rules.json must include a pii rule")
 	}
-	if strings.Contains(raw, `"action"`) {
-		t.Fatal("examples/rules.json must omit action so pii defaults to redact")
+	if !sawInj {
+		t.Fatal("examples/rules.json must include an injection rule")
 	}
 	readme := readRepoFile(t, "README.md")
-	for _, want := range []string{"default to redact", "plugin\": \"pii\"", "hosts/client", "hosts/cluster"} {
+	for _, want := range []string{
+		"default to redact",
+		"default to block",
+		`"plugin": "pii"`,
+		`"plugin": "injection"`,
+		"hosts/client",
+		"hosts/cluster",
+	} {
 		if !strings.Contains(readme, want) {
 			t.Fatalf("README missing %q", want)
 		}
@@ -165,22 +197,6 @@ func TestAC12_READMEShowsClientAndCluster(t *testing.T) {
 	for _, bad := range []string{"唯一中心 URL", "the only company-wide URL"} {
 		if strings.Contains(readme, bad) {
 			t.Fatalf("README must not present %q as the topology", bad)
-		}
-	}
-}
-
-func TestAC5_ExamplesInjectionOmitsActionDefaultsBlock(t *testing.T) {
-	raw := readRepoFile(t, "examples/rules.json")
-	if !strings.Contains(raw, `"plugin": "injection"`) {
-		t.Fatal("examples/rules.json must include an injection rule")
-	}
-	if strings.Contains(raw, `"action"`) {
-		t.Fatal("examples/rules.json must omit action so injection defaults to block")
-	}
-	readme := readRepoFile(t, "README.md")
-	for _, want := range []string{"default to block", `"plugin": "injection"`, "hosts/client", "hosts/cluster"} {
-		if !strings.Contains(readme, want) {
-			t.Fatalf("README missing %q", want)
 		}
 	}
 }

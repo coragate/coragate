@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import type { Locale } from "@/i18n/locale";
-import type { AuditItem, RuleSnapshot } from "@/lib/dataplane";
+import type { AuditItem, PluginInfo, RuleSnapshot } from "@/lib/dataplane";
 import { parseView, type ViewId } from "@/lib/view";
 
 const idle: ActionState = { ok: true, message: "" };
@@ -38,12 +38,14 @@ export function Console({
   view: initialView,
   rules,
   hits,
+  plugins,
   dataplaneError,
 }: {
   locale: Locale;
   view: ViewId;
   rules: RuleSnapshot;
   hits: AuditItem[];
+  plugins: PluginInfo[];
   dataplaneError?: string;
 }) {
   const searchParams = useSearchParams();
@@ -95,6 +97,7 @@ export function Console({
                 <FieldGroup>
                   <RulesEditor
                     initial={rules.rules ?? []}
+                    plugins={plugins}
                     schemaVersion={rules.schema_version || 1}
                   />
                   <Button type="submit" isLoading={saving}>
@@ -141,26 +144,43 @@ export function Console({
                 </FieldGroup>
               </form>
               {inspectState.inspect ? (
-                <div className="flex items-center gap-2">
-                  {inspectState.inspect.engine_error ? (
-                    <Badge variant="destructive">{tSandbox("engineError")}</Badge>
-                  ) : inspectState.inspect.hit ? (
-                    <Badge variant="destructive">
-                      {tSandbox("hit", { id: inspectState.inspect.rule_id ?? "" })}
-                      {inspectState.inspect.entity_type
-                        ? ` · ${inspectState.inspect.entity_type}`
-                        : ""}
-                      {inspectState.inspect.action
-                        ? ` · ${inspectState.inspect.action}`
-                        : ""}
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary">{tSandbox("miss")}</Badge>
-                  )}
-                  {inspectState.inspect.engine_error ? (
-                    <span className="text-muted-foreground text-sm">
-                      {inspectState.inspect.engine_error}
-                    </span>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    {inspectState.inspect.engine_error ? (
+                      <Badge variant="destructive">{tSandbox("engineError")}</Badge>
+                    ) : inspectState.inspect.hit ? (
+                      <Badge variant="destructive">
+                        {tSandbox("hit", { id: inspectState.inspect.rule_id ?? "" })}
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">{tSandbox("miss")}</Badge>
+                    )}
+                    {inspectState.inspect.engine_error ? (
+                      <span className="text-muted-foreground text-sm">
+                        {inspectState.inspect.engine_error}
+                      </span>
+                    ) : null}
+                  </div>
+                  {inspectState.inspect.matches &&
+                  inspectState.inspect.matches.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{tHits("rule")}</TableHead>
+                          <TableHead>{tHits("entity")}</TableHead>
+                          <TableHead>{tHits("action")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {inspectState.inspect.matches.map((m, i) => (
+                          <TableRow key={`${m.rule_id}-${i}`}>
+                            <TableCell>{m.rule_id}</TableCell>
+                            <TableCell>{m.entity_type ?? "—"}</TableCell>
+                            <TableCell>{m.action ?? "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   ) : null}
                 </div>
               ) : inspectState.message ? (

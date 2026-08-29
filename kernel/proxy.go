@@ -17,6 +17,7 @@ const (
 	reloadPath        = "/v1/reload"
 	rulesPath         = "/v1/rules"
 	auditPath         = "/v1/audit"
+	pluginsPath       = "/v1/plugins"
 	healthPath        = "/health"
 	headerGatewayMark = "X-Coragate-Proxy"
 	headerHitRule     = "X-Coragate-Hit"
@@ -52,6 +53,9 @@ func Handler(cfg Config) http.Handler {
 	mux.HandleFunc(auditPath, func(w http.ResponseWriter, r *http.Request) {
 		handleAudit(cfg, w, r)
 	})
+	mux.HandleFunc(pluginsPath, func(w http.ResponseWriter, r *http.Request) {
+		handlePlugins(cfg, w, r)
+	})
 	mux.HandleFunc(healthPath, handleHealth)
 	return mux
 }
@@ -72,6 +76,7 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 	started := time.Now()
 	rawBody := body
 	var inputHit, outputHit InspectResult
+	var copyErr error
 	outcome := OutcomeForwarded
 	defer func() {
 		cfg.enqueueAudit(rawBody, started, inputHit, outputHit, outcome)
@@ -132,11 +137,8 @@ func proxyChatCompletions(cfg Config, w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(headerHitRule, inputHit.RuleID)
 	}
 	w.WriteHeader(resp.StatusCode)
-	if cfg.policyMode() == PolicyEnforce && NeedsOutputHoldback(inspectors) {
-		outputHit, _ = copyHoldbackRedact(r.Context(), w, resp.Body, cfg, inspectors)
-	} else {
-		outputHit, _ = copyFlushScan(r.Context(), w, resp.Body, cfg, inspectors)
-	}
+	outputHit, copyErr = copyOutput(r.Context(), w, resp.Body, cfg, inspectors)
+	_ = copyErr
 	if outputHit.EngineError != "" {
 		if cfg.failClosed() {
 			outcome = OutcomeFailClosed
@@ -198,65 +200,6 @@ func copyResponseHeaders(dst, src http.Header) {
 	}
 }
 
-// copyFlushScan forwards complete SSE lines then scans. Used for block / observe (AC-11: stop later lines; do not recall flushed prefix).
-func copyFlushScan(ctx context.Context, dst http.ResponseWriter, src io.Reader, cfg Config, inspectors []Inspector) (InspectResult, error) {
-	var last InspectResult
-	flusher, _ := dst.(http.Flusher)
-	win := newSSEWindow(defaultWindowBytes)
-	var pending []byte
-	buf := make([]byte, 4096)
-	for {
-		n, err := src.Read(buf)
-		if n > 0 {
-			pending = append(pending, buf[:n]...)
-			for {
-				i := bytes.IndexByte(pending, '\n')
-				if i < 0 {
-					break
-				}
-				line := pending[:i+1]
-				pending = pending[i+1:]
-				if _, werr := dst.Write(line); werr != nil {
-					return last, werr
-				}
-				if flusher != nil {
-					flusher.Flush()
-				}
-				if len(inspectors) == 0 {
-					continue
-				}
-				for _, snap := range win.Feed(line) {
-					hit := InspectOutputWindow(ctx, inspectors, snap)
-					if hit.EngineError != "" {
-						last = hit
-						if cfg.failClosed() {
-							return last, nil
-						}
-						continue
-					}
-					if hit.Blocks() {
-						last = hit
-						if cfg.policyMode() == PolicyEnforce {
-							return last, nil
-						}
-					} else if hit.Hit {
-						last = hit
-					}
-				}
-			}
-		}
-		if err == io.EOF {
-			if len(pending) > 0 {
-				_, _ = dst.Write(pending)
-			}
-			return last, nil
-		}
-		if err != nil {
-			return last, err
-		}
-	}
-}
-
 func writeAndFlush(dst http.ResponseWriter, flusher http.Flusher, p []byte) error {
 	if len(p) == 0 {
 		return nil
@@ -286,10 +229,8 @@ func emitRedactedDelta(dst http.ResponseWriter, flusher http.Flusher, content st
 func copyHoldbackRedact(ctx context.Context, dst http.ResponseWriter, src io.Reader, cfg Config, inspectors []Inspector) (InspectResult, error) {
 	var last InspectResult
 	flusher, _ := dst.(http.Flusher)
-	var pending []byte
 	var extracted strings.Builder
 	emitted := ""
-	buf := make([]byte, 4096)
 
 	release := func(eof bool) error {
 		hold := OutputHoldbackRunes
@@ -356,35 +297,19 @@ func copyHoldbackRedact(ctx context.Context, dst http.ResponseWriter, src io.Rea
 		return release(false)
 	}
 
-	for {
-		n, err := src.Read(buf)
-		if n > 0 {
-			pending = append(pending, buf[:n]...)
-			for {
-				i := bytes.IndexByte(pending, '\n')
-				if i < 0 {
-					break
-				}
-				line := bytes.TrimSuffix(pending[:i], []byte{'\r'})
-				pending = pending[i+1:]
-				if herr := handleLine(line); herr != nil {
-					if herr == errOutputBlocked {
-						return last, nil
-					}
-					return last, herr
-				}
-			}
+	err := copySSEFrames(src, func(frame []byte) error {
+		line := bytes.TrimSuffix(bytes.TrimSuffix(frame, []byte{'\n'}), []byte{'\r'})
+		return handleLine(line)
+	}, func(tail []byte) error {
+		if rel := release(true); rel != nil && rel != errOutputBlocked {
+			return rel
 		}
-		if err == io.EOF {
-			if rel := release(true); rel != nil && rel != errOutputBlocked {
-				return last, rel
-			}
-			return last, nil
-		}
-		if err != nil {
-			return last, err
-		}
+		return nil
+	})
+	if err == errOutputBlocked {
+		return last, nil
 	}
+	return last, err
 }
 
 var errOutputBlocked = fmt.Errorf("coragate: output blocked")

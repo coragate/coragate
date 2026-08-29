@@ -9,83 +9,33 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
-import type { RuleRow } from "@/lib/dataplane";
-
-const PII_TYPES = ["email", "phone_cn", "id_card_cn", "bank_card"] as const;
-
-type PluginID = "keyword" | "pii" | "injection";
-
-type DraftRule = {
-  id: string;
-  plugin: PluginID;
-  type: string;
-  action: "block" | "redact";
-  pattern: string;
-};
-
-function parsePlugin(v: string | undefined): PluginID {
-  if (v === "pii") return "pii";
-  if (v === "injection") return "injection";
-  return "keyword";
-}
-
-function defaultAction(plugin: PluginID): "block" | "redact" {
-  return plugin === "pii" ? "redact" : "block";
-}
-
-function fromRow(r: RuleRow): DraftRule {
-  const plugin = parsePlugin(r.plugin);
-  return {
-    id: r.id,
-    plugin,
-    type:
-      plugin === "injection"
-        ? "prompt_injection"
-        : r.type ?? "email",
-    action:
-      r.action === "redact" || r.action === "block"
-        ? r.action
-        : defaultAction(plugin),
-    pattern: r.pattern ?? "",
-  };
-}
-
-function toRow(d: DraftRule): RuleRow {
-  const row: RuleRow = {
-    id: d.id.trim(),
-    plugin: d.plugin,
-    action: d.action,
-  };
-  if (d.plugin === "pii") {
-    row.type = d.type;
-  } else if (d.plugin === "injection") {
-    row.type = "prompt_injection";
-  } else {
-    row.pattern = d.pattern;
-  }
-  return row;
-}
-
-function emptyKeyword(): DraftRule {
-  return {
-    id: "demo-keyword",
-    plugin: "keyword",
-    type: "email",
-    action: "block",
-    pattern: "(?i)coragate-block-me",
-  };
-}
+import type { PluginInfo, RuleRow } from "@/lib/dataplane";
+import {
+  catalogOrFallback,
+  defaultActionFor,
+  emptyKeyword,
+  fromRow,
+  isKnownPlugin,
+  pluginInfo,
+  toRow,
+  type DraftRule,
+} from "@/lib/rules-draft";
 
 export function RulesEditor({
   initial,
   schemaVersion,
+  plugins,
 }: {
   initial: RuleRow[];
   schemaVersion: number;
+  plugins?: PluginInfo[];
 }) {
   const t = useTranslations("rules");
+  const catalog = catalogOrFallback(plugins);
   const [rows, setRows] = useState<DraftRule[]>(() =>
-    initial.length ? initial.map(fromRow) : [emptyKeyword()]
+    initial.length
+      ? initial.map((r) => fromRow(r, catalog))
+      : [emptyKeyword(catalog)]
   );
 
   const snapshot = useMemo(
@@ -93,158 +43,169 @@ export function RulesEditor({
       JSON.stringify(
         {
           schema_version: schemaVersion || 1,
-          rules: rows.map(toRow),
+          rules: rows.map((r) => toRow(r, catalog)),
         },
         null,
         2
       ),
-    [rows, schemaVersion]
+    [rows, schemaVersion, catalog]
   );
 
   function update(i: number, patch: Partial<DraftRule>) {
     setRows((prev) => prev.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   }
 
+  const hasPii = catalog.some((p) => p.id === "pii");
+  const hasInjection = catalog.some((p) => p.id === "injection");
+
   return (
     <FieldGroup>
       {/* 提交给数据面的快照；匹配仍在 Go 插件里做 */}
       <input type="hidden" name="snapshot" value={snapshot} />
-      {rows.map((row, i) => (
-        <div
-          key={i}
-          className="flex flex-col gap-3 rounded-xl border p-3"
-        >
-          <Field>
-            <FieldLabel>{t("ruleId")}</FieldLabel>
-            <Input
-              type="text"
-              value={row.id}
-              onChange={(e) => update(i, { id: e.target.value })}
-            />
-          </Field>
-          <div className="flex flex-wrap gap-3">
+      {rows.map((row, i) => {
+        const info = pluginInfo(row.plugin, catalog);
+        const known = isKnownPlugin(row.plugin, catalog);
+        const types = info?.entity_types ?? [];
+        return (
+          <div
+            key={i}
+            className="flex flex-col gap-3 rounded-xl border p-3"
+          >
             <Field>
-              <FieldLabel>{t("plugin")}</FieldLabel>
-              <NativeSelect
-                value={row.plugin}
-                onChange={(e) => {
-                  const plugin = parsePlugin(e.target.value);
-                  update(i, {
-                    plugin,
-                    action: defaultAction(plugin),
-                    type:
-                      plugin === "injection"
-                        ? "prompt_injection"
-                        : plugin === "pii"
-                          ? "email"
-                          : row.type,
-                  });
-                }}
-              >
-                <NativeSelectOption value="keyword">keyword</NativeSelectOption>
-                <NativeSelectOption value="pii">pii</NativeSelectOption>
-                <NativeSelectOption value="injection">
-                  injection
-                </NativeSelectOption>
-              </NativeSelect>
+              <FieldLabel>{t("ruleId")}</FieldLabel>
+              <Input
+                type="text"
+                value={row.id}
+                onChange={(e) => update(i, { id: e.target.value })}
+              />
             </Field>
-            <Field>
-              <FieldLabel>{t("action")}</FieldLabel>
-              <NativeSelect
-                value={row.action}
-                onChange={(e) =>
-                  update(i, {
-                    action: e.target.value === "redact" ? "redact" : "block",
-                  })
-                }
-              >
-                <NativeSelectOption value="block">block</NativeSelectOption>
-                <NativeSelectOption value="redact">redact</NativeSelectOption>
-              </NativeSelect>
-            </Field>
-            {row.plugin === "pii" ? (
+            {!known ? (
+              <p className="text-destructive text-sm">{t("unknownPlugin")}</p>
+            ) : null}
+            <div className="flex flex-wrap gap-3">
               <Field>
-                <FieldLabel>{t("entityType")}</FieldLabel>
+                <FieldLabel>{t("plugin")}</FieldLabel>
                 <NativeSelect
-                  value={row.type}
-                  onChange={(e) => update(i, { type: e.target.value })}
+                  value={row.plugin}
+                  onChange={(e) => {
+                    const plugin = e.target.value;
+                    if (!isKnownPlugin(plugin, catalog)) {
+                      return;
+                    }
+                    const next = pluginInfo(plugin, catalog);
+                    update(i, {
+                      plugin,
+                      action: defaultActionFor(plugin, catalog),
+                      type: next?.entity_types?.[0] ?? "",
+                    });
+                  }}
                 >
-                  {PII_TYPES.map((typ) => (
-                    <NativeSelectOption key={typ} value={typ}>
-                      {typ}
+                  {!known ? (
+                    <NativeSelectOption value={row.plugin}>
+                      {row.plugin}
+                    </NativeSelectOption>
+                  ) : null}
+                  {catalog.map((p) => (
+                    <NativeSelectOption key={p.id} value={p.id}>
+                      {p.id}
                     </NativeSelectOption>
                   ))}
                 </NativeSelect>
               </Field>
-            ) : row.plugin === "injection" ? (
               <Field>
-                <FieldLabel>{t("entityType")}</FieldLabel>
-                <NativeSelect value="prompt_injection" disabled>
-                  <NativeSelectOption value="prompt_injection">
-                    prompt_injection
-                  </NativeSelectOption>
+                <FieldLabel>{t("action")}</FieldLabel>
+                <NativeSelect
+                  value={row.action}
+                  onChange={(e) =>
+                    update(i, {
+                      action: e.target.value === "redact" ? "redact" : "block",
+                    })
+                  }
+                >
+                  <NativeSelectOption value="block">block</NativeSelectOption>
+                  <NativeSelectOption value="redact">redact</NativeSelectOption>
                 </NativeSelect>
               </Field>
-            ) : (
-              <Field className="min-w-48 flex-1">
-                <FieldLabel>{t("pattern")}</FieldLabel>
-                <Input
-                  type="text"
-                  value={row.pattern}
-                  onChange={(e) => update(i, { pattern: e.target.value })}
-                  className="font-mono"
-                />
-              </Field>
-            )}
+              {types.length > 0 ? (
+                <Field>
+                  <FieldLabel>{t("entityType")}</FieldLabel>
+                  <NativeSelect
+                    value={row.type || types[0]}
+                    disabled={types.length === 1}
+                    onChange={(e) => update(i, { type: e.target.value })}
+                  >
+                    {types.map((typ) => (
+                      <NativeSelectOption key={typ} value={typ}>
+                        {typ}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                </Field>
+              ) : info?.needs_pattern ? (
+                <Field className="min-w-48 flex-1">
+                  <FieldLabel>{t("pattern")}</FieldLabel>
+                  <Input
+                    type="text"
+                    value={row.pattern}
+                    onChange={(e) => update(i, { pattern: e.target.value })}
+                    className="font-mono"
+                  />
+                </Field>
+              ) : null}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}
+              disabled={rows.length <= 1}
+            >
+              {t("remove")}
+            </Button>
           </div>
+        );
+      })}
+      <div className="flex flex-wrap gap-2">
+        {hasPii ? (
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}
-            disabled={rows.length <= 1}
+            onClick={() =>
+              setRows((prev) => [
+                ...prev,
+                {
+                  id: `pii-email-${prev.length + 1}`,
+                  plugin: "pii",
+                  type: "email",
+                  action: defaultActionFor("pii", catalog),
+                  pattern: "",
+                },
+              ])
+            }
           >
-            {t("remove")}
+            {t("addPii")}
           </Button>
-        </div>
-      ))}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() =>
-            setRows((prev) => [
-              ...prev,
-              {
-                id: `pii-email-${prev.length + 1}`,
-                plugin: "pii",
-                type: "email",
-                action: "redact",
-                pattern: "",
-              },
-            ])
-          }
-        >
-          {t("addPii")}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() =>
-            setRows((prev) => [
-              ...prev,
-              {
-                id: `injection-prompt-${prev.length + 1}`,
-                plugin: "injection",
-                type: "prompt_injection",
-                action: "block",
-                pattern: "",
-              },
-            ])
-          }
-        >
-          {t("addInjection")}
-        </Button>
+        ) : null}
+        {hasInjection ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setRows((prev) => [
+                ...prev,
+                {
+                  id: `injection-prompt-${prev.length + 1}`,
+                  plugin: "injection",
+                  type: "prompt_injection",
+                  action: defaultActionFor("injection", catalog),
+                  pattern: "",
+                },
+              ])
+            }
+          >
+            {t("addInjection")}
+          </Button>
+        ) : null}
       </div>
     </FieldGroup>
   );
